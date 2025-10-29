@@ -1,0 +1,39 @@
+# build artifacts
+/build/
+/out/
+/dist/
+/.venv/
+/.env
+*.iso
+*.img
+*.bin
+*.map
+*.o
+*.d
+*.elf
+*.exe
+*.dll
+*.so
+*.a
+*.lib
+*.pdb
+*.log
+
+# editor/OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+
+# tool caches
+.cache/
+.ccls-cache/
+.clangd/
+compile_commands.json
+
+# keep GRUB config tracked even if under build templates
+!boot/grub/grub.cfg
+docs/_site/
