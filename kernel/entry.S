@@ -1,16 +1,22 @@
+# Multiboot v1 header + 32-bit entry point
+
+.set ALIGN,    1<<0
+.set MEMINFO,  1<<1
+.set FLAGS,    ALIGN | MEMINFO
 .set MAGIC,    0x1BADB002
-.set FLAGS,    (1 << 0) | (1 << 1)   /* align + meminfo */
 .set CHECKSUM, -(MAGIC + FLAGS)
 
-.section .multiboot
-.align 4
-.long MAGIC
-.long FLAGS
-.long CHECKSUM
+    .section .text
+    .align 4
 
-.section .text
-.global _start
-.type _start, @function
+    # ---- Multiboot header (must be in first 8KiB of .text) ----
+    .long MAGIC
+    .long FLAGS
+    .long CHECKSUM
+
+    .globl _start
+    .type _start, @function
+
 _start:
     cli
     mov $stack_top, %esp
@@ -20,8 +26,8 @@ _start:
     hlt
     jmp .hang
 
-.section .bss
-.align 16
+    .section .bss
+    .align 16
 stack_bottom:
-    .skip 16384
+    .skip 16384           # 16 KB stack
 stack_top:
