@@ -6,23 +6,50 @@ ISODIR      := $(BUILD)/isodir
 CC32        := gcc -m32
 LD32        := ld -m elf_i386
 
-CFLAGS      := -std=c11 -ffreestanding -fno-stack-protector -fno-pie -O2 -Wall -Wextra
+CFLAGS      := -std=c11 -ffreestanding -fno-stack-protector -fno-pie -O2 -Wall -Wextra -Ikernel
 ASFLAGS     := -m32 -ffreestanding -fno-pie -O2
 LDFLAGS     := -nostdlib
 
-OBJS        := $(BUILD)/entry.o $(BUILD)/kernel_main.o
+OBJS        := \
+	$(BUILD)/entry.o \
+	$(BUILD)/kernel_main.o \
+	$(BUILD)/gdt.o \
+	$(BUILD)/gdt_flush.o \
+	$(BUILD)/idt.o \
+	$(BUILD)/isr.o \
+	$(BUILD)/isr_s.o
 
-.PHONY: all run iso clean
+.PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
 
 $(BUILD)/entry.o: kernel/entry.S
 	@mkdir -p $(BUILD)
-	$(CC32) -ffreestanding -fno-pie -O2 -c $< -o $@
+	$(CC32) $(ASFLAGS) -c $< -o $@
 
 $(BUILD)/kernel_main.o: kernel/kernel_main.c
 	@mkdir -p $(BUILD)
 	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/gdt.o: kernel/gdt.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/gdt_flush.o: kernel/gdt_flush.S
+	@mkdir -p $(BUILD)
+	$(CC32) $(ASFLAGS) -c $< -o $@
+
+$(BUILD)/idt.o: kernel/idt.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/isr.o: kernel/isr.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/isr_s.o: kernel/isr.S
+	@mkdir -p $(BUILD)
+	$(CC32) $(ASFLAGS) -c $< -o $@
 
 $(BUILD)/$(TARGET): $(OBJS) linker.ld
 	$(LD32) -T linker.ld -o $@ $(OBJS)
@@ -37,10 +64,10 @@ run: iso
 	qemu-system-i386 -cdrom $(ISO) -m 256
 
 run-gtk: iso
-	qemu-system-i386 -cdrom build/hypnos.iso -m 256 -display gtk -no-reboot -no-shutdown
+	qemu-system-i386 -cdrom $(ISO) -m 256 -display gtk -no-reboot -no-shutdown
 
 run-sdl: iso
-	qemu-system-i386 -cdrom build/hypnos.iso -m 256 -display sdl -no-reboot -no-shutdown
+	qemu-system-i386 -cdrom $(ISO) -m 256 -display sdl -no-reboot -no-shutdown
 
 run-curses: iso
 	qemu-system-i386 -cdrom $(ISO) -m 256 -display curses -no-reboot -no-shutdown

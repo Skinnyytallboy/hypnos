@@ -1,35 +1,193 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define VGA_TEXT ((uint16_t*)0xB8000)
-#define VGA_COLS 80
-#define VGA_ROWS 25
-static uint8_t vga_color = 0x0F; // white on black
-static size_t cur_row = 0, cur_col = 0;
+#include "console.h"
+#include "gdt.h"
+#include "idt.h"
+
+#define VGA_MEMORY   0xB8000
+#define VGA_COLS     80
+#define VGA_ROWS     25
+
+static uint16_t* const VGA = (uint16_t*)VGA_MEMORY;
+static uint8_t text_color = 0x0F;   // white on black
+
+static size_t cursor_row = 0;
+static size_t cursor_col = 0;
 
 static inline uint16_t vga_entry(char c, uint8_t color) {
     return (uint16_t)c | ((uint16_t)color << 8);
 }
 
-static void cls(void) {
-    for (size_t i = 0; i < VGA_ROWS * VGA_COLS; ++i) {
-        VGA_TEXT[i] = vga_entry(' ', vga_color);
+static void console_scroll_if_needed(void) {
+    if (cursor_row < VGA_ROWS)
+        return;
+
+    // scroll up
+    for (size_t r = 1; r < VGA_ROWS; ++r) {
+        for (size_t c = 0; c < VGA_COLS; ++c) {
+            VGA[(r - 1) * VGA_COLS + c] = VGA[r * VGA_COLS + c];
+        }
     }
-    cur_row = cur_col = 0;
+
+    // clear last row
+    for (size_t c = 0; c < VGA_COLS; ++c) {
+        VGA[(VGA_ROWS - 1) * VGA_COLS + c] = vga_entry(' ', text_color);
+    }
+
+    cursor_row = VGA_ROWS - 1;
 }
 
-static void putc(char c) {
-    if (c == '\n') { cur_col = 0; if (++cur_row >= VGA_ROWS) cur_row = 0; return; }
-    size_t idx = cur_row * VGA_COLS + cur_col;
-    VGA_TEXT[idx] = vga_entry(c, vga_color);
-    if (++cur_col >= VGA_COLS) { cur_col = 0; if (++cur_row >= VGA_ROWS) cur_row = 0; }
+static void console_putc(char c) {
+    if (c == '\n') {
+        cursor_col = 0;
+        cursor_row++;
+        console_scroll_if_needed();
+        return;
+    }
+
+    VGA[cursor_row * VGA_COLS + cursor_col] = vga_entry(c, text_color);
+    cursor_col++;
+
+    if (cursor_col >= VGA_COLS) {
+        cursor_col = 0;
+        cursor_row++;
+        console_scroll_if_needed();
+    }
 }
 
-static void puts(const char* s) { while (*s) putc(*s++); }
+/* Exported console API (used by other files) */
+void console_clear(void) {
+    for (size_t r = 0; r < VGA_ROWS; ++r) {
+        for (size_t c = 0; c < VGA_COLS; ++c) {
+            VGA[r * VGA_COLS + c] = vga_entry(' ', text_color);
+        }
+    }
+    cursor_row = 0;
+    cursor_col = 0;
+}
 
+void console_write(const char* s) {
+    for (size_t i = 0; s[i] != '\0'; ++i) {
+        console_putc(s[i]);
+    }
+}
+
+/* Kernel entry */
 void kernel_main(void) {
-    cls();
-    puts("Hypnos kernel booted! Hello from 32-bit land.\n");
-    puts("Clean screen, no firmware noise. :)\n");
-    for (;;) __asm__ volatile ("hlt");
+    console_clear();
+    console_write("Hypnos kernel booted!\n");
+
+    gdt_init();
+    console_write("GDT initialized.\n");
+
+    idt_init();
+    console_write("IDT initialized.\n");
+
+    console_write("If something crashes, we'll see an exception message.\n");
+
+    for (;;) {
+        __asm__ volatile ("hlt");
+    }
 }
+
+// #include <stdint.h>
+// #include <stddef.h>
+// #include "gdt.h"
+// #include "idt.h"
+
+
+// #define VGA_MEMORY   0xB8000
+// #define VGA_COLS     80
+// #define VGA_ROWS     25
+
+// static uint16_t* const VGA = (uint16_t*)VGA_MEMORY;
+// static uint8_t text_color = 0x0F;   // white on black
+
+// static size_t cursor_row = 0;
+// static size_t cursor_col = 0;
+
+// static inline uint16_t vga_entry(char c, uint8_t color) {
+//     return (uint16_t)c | ((uint16_t)color << 8);
+// }
+
+// static void console_clear(void) {
+//     for (size_t r = 0; r < VGA_ROWS; ++r) {
+//         for (size_t c = 0; c < VGA_COLS; ++c) {
+//             VGA[r * VGA_COLS + c] = vga_entry(' ', text_color);
+//         }
+//     }
+//     cursor_row = 0;
+//     cursor_col = 0;
+// }
+
+// static void console_scroll_if_needed(void) {
+//     if (cursor_row < VGA_ROWS)
+//         return;
+
+//     // scroll everything up by one row
+//     for (size_t r = 1; r < VGA_ROWS; ++r) {
+//         for (size_t c = 0; c < VGA_COLS; ++c) {
+//             VGA[(r - 1) * VGA_COLS + c] = VGA[r * VGA_COLS + c];
+//         }
+//     }
+
+//     // clear last row
+//     for (size_t c = 0; c < VGA_COLS; ++c) {
+//         VGA[(VGA_ROWS - 1) * VGA_COLS + c] = vga_entry(' ', text_color);
+//     }
+
+//     cursor_row = VGA_ROWS - 1;
+// }
+
+// static void console_putc(char c) {
+//     if (c == '\n') {
+//         cursor_col = 0;
+//         cursor_row++;
+//         console_scroll_if_needed();
+//         return;
+//     }
+
+//     VGA[cursor_row * VGA_COLS + cursor_col] = vga_entry(c, text_color);
+//     cursor_col++;
+
+//     if (cursor_col >= VGA_COLS) {
+//         cursor_col = 0;
+//         cursor_row++;
+//         console_scroll_if_needed();
+//     }
+// }
+
+// static void console_write(const char* s) {
+//     for (size_t i = 0; s[i] != '\0'; ++i) {
+//         console_putc(s[i]);
+//     }
+// }
+
+// void kernel_main(void) {
+//     console_clear();
+//     console_write("Hypnos booting...\n");
+
+//     gdt_init();
+//     console_write("GDT loaded.\n");
+
+//     idt_init();
+//     console_write("IDT loaded.\n");
+
+//     console_write("If no crash, interrupts are now active.\n");
+
+//     for (;;) __asm__("hlt");
+// }
+
+
+// // void kernel_main(void) {
+// //     console_clear();
+// //     console_write("Hypnos kernel booted!\n");
+// //     console_write("Welcome, Jalal.\n");
+// //     console_write("This is your tiny text console.\n");
+// //     console_write("Next: GDT/IDT, interrupts, paging...\n");
+
+// //     for (;;) {
+// //         __asm__ volatile ("hlt");
+// //     }
+// // }
