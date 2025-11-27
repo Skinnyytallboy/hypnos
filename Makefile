@@ -22,12 +22,21 @@ OBJS        := \
 	$(BUILD)/irq_s.o \
 	$(BUILD)/timer.o \
 	$(BUILD)/keyboard.o \
-	$(BUILD)/shell.o
-
+	$(BUILD)/shell.o \
+	$(BUILD)/paging.o \
+	$(BUILD)/kmalloc.o
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+$(BUILD)/paging.o: kernel/paging.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/kmalloc.o: kernel/kmalloc.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/shell.o: kernel/shell.c
 	@mkdir -p $(BUILD)
