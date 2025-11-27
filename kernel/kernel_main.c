@@ -4,13 +4,15 @@
 #include "console.h"
 #include "gdt.h"
 #include "idt.h"
+#include "irq.h"
+#include "timer.h"
 
 #define VGA_MEMORY   0xB8000
 #define VGA_COLS     80
 #define VGA_ROWS     25
 
 static uint16_t* const VGA = (uint16_t*)VGA_MEMORY;
-static uint8_t text_color = 0x0F;   // white on black
+static uint8_t text_color = 0x0F;
 
 static size_t cursor_row = 0;
 static size_t cursor_col = 0;
@@ -20,20 +22,11 @@ static inline uint16_t vga_entry(char c, uint8_t color) {
 }
 
 static void console_scroll_if_needed(void) {
-    if (cursor_row < VGA_ROWS)
-        return;
-
-    // scroll up
+    if (cursor_row < VGA_ROWS) return;
     for (size_t r = 1; r < VGA_ROWS; ++r) {
-        for (size_t c = 0; c < VGA_COLS; ++c) {
-            VGA[(r - 1) * VGA_COLS + c] = VGA[r * VGA_COLS + c];
-        }
+        for (size_t c = 0; c < VGA_COLS; ++c) VGA[(r - 1) * VGA_COLS + c] = VGA[r * VGA_COLS + c];
     }
-
-    // clear last row
-    for (size_t c = 0; c < VGA_COLS; ++c) {
-        VGA[(VGA_ROWS - 1) * VGA_COLS + c] = vga_entry(' ', text_color);
-    }
+    for (size_t c = 0; c < VGA_COLS; ++c) VGA[(VGA_ROWS - 1) * VGA_COLS + c] = vga_entry(' ', text_color);
 
     cursor_row = VGA_ROWS - 1;
 }
@@ -56,7 +49,6 @@ static void console_putc(char c) {
     }
 }
 
-/* Exported console API (used by other files) */
 void console_clear(void) {
     for (size_t r = 0; r < VGA_ROWS; ++r) {
         for (size_t c = 0; c < VGA_COLS; ++c) {
@@ -80,9 +72,17 @@ void kernel_main(void) {
     console_write("GDT initialized.\n");
     idt_init();
     console_write("IDT initialized.\n");
-    console_write("Triggering interrupt 0 (Division By Zero)...\n");
-    __asm__ volatile ("int $0");   // this MUST enter your isr0 handler
-    console_write("If you see this line, ISR0 didn't run.\n");
+    idt_init();
+    console_write("IDT initialized.\n");
+
+    irq_install();
+    console_write("PIC remapped, IRQs installed.\n");
+
+    timer_install();
+    console_write("Timer initialized (100 Hz).\n");
+
+    console_write("Enabling interrupts...\n");
+    __asm__ volatile ("sti"); 
 
     for (;;) {
         __asm__ volatile ("hlt");

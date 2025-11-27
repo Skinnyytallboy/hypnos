@@ -17,11 +17,27 @@ OBJS        := \
 	$(BUILD)/gdt_flush.o \
 	$(BUILD)/idt.o \
 	$(BUILD)/isr.o \
-	$(BUILD)/isr_s.o
+	$(BUILD)/isr_s.o \
+	$(BUILD)/irq.o \
+	$(BUILD)/irq_s.o \
+	$(BUILD)/timer.o
+
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+$(BUILD)/irq.o: kernel/irq.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/irq_s.o: kernel/irq.S
+	@mkdir -p $(BUILD)
+	$(CC32) $(ASFLAGS) -c $< -o $@
+
+$(BUILD)/timer.o: kernel/timer.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/entry.o: kernel/entry.S
 	@mkdir -p $(BUILD)
