@@ -6,6 +6,7 @@
 #include "idt.h"
 #include "irq.h"
 #include "timer.h"
+#include "keyboard.h"
 
 #define VGA_MEMORY   0xB8000
 #define VGA_COLS     80
@@ -81,8 +82,12 @@ void kernel_main(void) {
     timer_install();
     console_write("Timer initialized (100 Hz).\n");
 
+    keyboard_install();
+
     console_write("Enabling interrupts...\n");
-    __asm__ volatile ("sti"); 
+    __asm__ volatile ("sti");
+
+    console_write("Type on your keyboard; characters should appear here.\n");
 
     for (;;) {
         __asm__ volatile ("hlt");
