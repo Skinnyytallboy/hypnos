@@ -29,14 +29,11 @@ $(BUILD)/$(TARGET): $(OBJS) linker.ld
 
 iso: $(BUILD)/$(TARGET) boot/grub/grub.cfg
 	@mkdir -p $(ISODIR)/boot/grub
-	cp $(BUILD)/$(TARGET) $(ISODIR)/boot/kernel.elf
-	cp boot/grub/grub.cfg $(ISODIR)/boot/grub/grub.cfg
+	@cp $(BUILD)/$(TARGET) $(ISODIR)/boot/kernel.elf
+	@cp boot/grub/grub.cfg $(ISODIR)/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) $(ISODIR)
 
 run: iso
-	qemu-system-i386 -cdrom build/hypnos.iso -m 256 -display sdl -no-reboot -no-shutdown
-
-run-t: iso
 	qemu-system-i386 -cdrom $(ISO) -m 256
 
 run-gtk: iso
@@ -45,9 +42,8 @@ run-gtk: iso
 run-sdl: iso
 	qemu-system-i386 -cdrom build/hypnos.iso -m 256 -display sdl -no-reboot -no-shutdown
 
-run-nuc: iso
+run-curses: iso
 	qemu-system-i386 -cdrom $(ISO) -m 256 -display curses -no-reboot -no-shutdown
-
 
 clean:
 	rm -rf $(BUILD)
