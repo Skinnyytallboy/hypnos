@@ -6,12 +6,13 @@ static inline void outb(uint16_t port, uint8_t value) {
     __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
 }
 
-static volatile uint32_t timer_ticks = 0;
+//static volatile uint32_t timer_ticks = 0;
+volatile uint32_t timer_ticks = 0;
 
 static void timer_callback(void) {
     timer_ticks++;
-    if (timer_ticks % 100 == 0)   // roughly once per second at 100 Hz
-        console_write("Tick...\n");
+    // if (timer_ticks % 100 == 0)   // roughly once per second at 100 Hz
+    //     console_write("Tick...\n");
 }
 
 void timer_install(void)

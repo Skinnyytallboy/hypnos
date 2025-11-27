@@ -1,3 +1,5 @@
+extern void shell_keypress(char c);
+
 #include <stdint.h>
 #include "irq.h"
 #include "console.h"
@@ -30,14 +32,17 @@ static void keyboard_callback(void)
     char c = 0;
     if (scancode < 128)
         c = keymap[scancode];
-    if (c) {
-        if (c == '\b')      console_write("\b");
-        else if (c == '\n') console_write("\n");
-        else {
-            char s[2] = { c, 0 };
-            console_write(s);
-        }
-    }
+    if (c) shell_keypress(c);
+    // if (c) {
+    //     if (c == '\b') {
+    //         console_write("\b");
+    //     } else if (c == '\n') {
+    //         console_write("\n");
+    //     } else {
+    //         char s[2] = { c, 0 };
+    //         console_write(s);
+    //     }
+    // }
 }
 
 void keyboard_install(void) {

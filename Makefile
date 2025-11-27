@@ -21,11 +21,17 @@ OBJS        := \
 	$(BUILD)/irq.o \
 	$(BUILD)/irq_s.o \
 	$(BUILD)/timer.o \
-	$(BUILD)/keyboard.o
+	$(BUILD)/keyboard.o \
+	$(BUILD)/shell.o
+
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+$(BUILD)/shell.o: kernel/shell.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/keyboard.o: kernel/keyboard.c
 	@mkdir -p $(BUILD)

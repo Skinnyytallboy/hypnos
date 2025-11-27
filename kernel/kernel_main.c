@@ -7,6 +7,7 @@
 #include "irq.h"
 #include "timer.h"
 #include "keyboard.h"
+#include "shell.h"
 
 #define VGA_MEMORY   0xB8000
 #define VGA_COLS     80
@@ -86,6 +87,9 @@ void kernel_main(void) {
 
     console_write("Enabling interrupts...\n");
     __asm__ volatile ("sti");
+
+    shell_init();
+    shell_run();
 
     console_write("Type on your keyboard; characters should appear here.\n");
 
