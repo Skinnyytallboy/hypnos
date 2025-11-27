@@ -118,6 +118,16 @@ void kernel_main(void) {
 
     if (a && b) console_write("kmalloc working.\n");
 
+    char* buf = kmalloc(256);
+if (buf) {
+    buf[0] = 'O';
+    buf[1] = 'K';
+    buf[2] = 0;
+    console_write("Heap test: ");
+    console_write(buf);
+    console_write("\n");
+}
+
 
     irq_install();
     console_write("PIC remapped, IRQs installed.\n");
