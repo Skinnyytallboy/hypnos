@@ -73,23 +73,23 @@ void console_write(const char* s) {
     }
 }
 
-/* Kernel entry */
 void kernel_main(void) {
     console_clear();
     console_write("Hypnos kernel booted!\n");
-
     gdt_init();
     console_write("GDT initialized.\n");
-
     idt_init();
     console_write("IDT initialized.\n");
-
-    console_write("If something crashes, we'll see an exception message.\n");
+    console_write("Triggering interrupt 0 (Division By Zero)...\n");
+    __asm__ volatile ("int $0");   // this MUST enter your isr0 handler
+    console_write("If you see this line, ISR0 didn't run.\n");
 
     for (;;) {
         __asm__ volatile ("hlt");
     }
 }
+
+
 
 // #include <stdint.h>
 // #include <stddef.h>
