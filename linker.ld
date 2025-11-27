@@ -2,8 +2,9 @@ ENTRY(_start)
 
 SECTIONS
 {
-  /* Link address 1 MiB (typical for Multiboot OS) */
   . = 1M;
+
+  kernel_start = .;
 
   .multiboot ALIGN(4) :
   {
@@ -30,4 +31,6 @@ SECTIONS
     *(.bss*)
     *(COMMON)
   }
+
+  kernel_end = .;
 }

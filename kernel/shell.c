@@ -101,7 +101,8 @@ static void cmd_echo(const char* msg) {
 
 static void cmd_panic(void) {
     console_write("Triggering division by zero...\n");
-    int x = 1 / 0;
+    int zero = 0;
+    int x = 1 / zero;
     (void)x;
 }
 

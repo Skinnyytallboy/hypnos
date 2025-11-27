@@ -24,11 +24,17 @@ OBJS        := \
 	$(BUILD)/keyboard.o \
 	$(BUILD)/shell.o \
 	$(BUILD)/paging.o \
-	$(BUILD)/kmalloc.o
+	$(BUILD)/kmalloc.o \
+	$(BUILD)/physmem.o
+
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+$(BUILD)/physmem.o: kernel/physmem.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/paging.o: kernel/paging.c
 	@mkdir -p $(BUILD)

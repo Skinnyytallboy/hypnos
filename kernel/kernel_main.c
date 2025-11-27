@@ -10,6 +10,7 @@
 #include "paging.h"
 #include "kmalloc.h"
 #include "shell.h"
+#include "physmem.h"
 
 #define VGA_MEMORY   0xB8000
 #define VGA_COLS     80
@@ -83,6 +84,31 @@ void kernel_main(void) {
     paging_enable();
 
     console_write("Paging initialized and enabled.\n");
+
+    phys_init();
+
+    console_write("Testing phys_alloc_frame...\n");
+    uint32_t f1 = phys_alloc_frame();
+    uint32_t f2 = phys_alloc_frame();
+
+    if (f1 && f2) {
+        console_write("Allocated frames at: 0x");
+        // quick hex print
+        uint32_t vals[2] = {f1, f2};
+        for (int k = 0; k < 2; k++) {
+            uint32_t v = vals[k];
+            char buf[9];
+            for (int i = 0; i < 8; i++) {
+                uint8_t nibble = (v >> ((7 - i) * 4)) & 0xF;
+                buf[i] = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+            }
+            buf[8] = 0;
+            console_write(buf);
+            if (k == 0) console_write(", 0x");
+        }
+        console_write("\n");
+    }
+
 
     kmalloc_init();
     console_write("Testing kmalloc...\n");
