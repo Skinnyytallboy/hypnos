@@ -25,12 +25,20 @@ OBJS        := \
 	$(BUILD)/shell.o \
 	$(BUILD)/paging.o \
 	$(BUILD)/kmalloc.o \
-	$(BUILD)/physmem.o
-
+	$(BUILD)/physmem.o \
+# 	$(BUILD)/task.o \
+# 	$(BUILD)/context_switch.o
+	
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+# $(BUILD)/task.o: kernel/task.c
+# 	$(CC32) $(CFLAGS) -c $< -o $@
+
+# $(BUILD)/context_switch.o: kernel/context_switch.S
+# 	$(CC32) $(ASFLAGS) -c $< -o $@
 
 $(BUILD)/physmem.o: kernel/physmem.c
 	@mkdir -p $(BUILD)

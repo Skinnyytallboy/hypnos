@@ -13,6 +13,9 @@ static void timer_callback(void) {
     timer_ticks++;
     // if (timer_ticks % 100 == 0)   // roughly once per second at 100 Hz
     //     console_write("Tick...\n");
+    // if (timer_ticks % 100 == 0) console_write(".");
+    // extern void task_switch(void);
+    // task_switch();
 }
 
 void timer_install(void)

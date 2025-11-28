@@ -11,6 +11,7 @@
 #include "kmalloc.h"
 #include "shell.h"
 #include "physmem.h"
+// #include "task.h"
 
 #define VGA_MEMORY   0xB8000
 #define VGA_COLS     80
@@ -70,31 +71,44 @@ void console_write(const char* s) {
     }
 }
 
+// void thread1(void)
+// {
+//     while (1) {
+//         console_write("[T1]");
+//         task_yield();
+//     }
+// }
+
+// void thread2(void)
+// {
+//     while (1) {
+//         console_write("[T2]");
+//         task_yield();
+//     }
+// }
+
 void kernel_main(void) {
     console_clear();
     console_write("Hypnos kernel booted!\n");
+
     gdt_init();
     console_write("GDT initialized.\n");
-    idt_init();
-    console_write("IDT initialized.\n");
+
     idt_init();
     console_write("IDT initialized.\n");
 
     paging_init();
     paging_enable();
-
     console_write("Paging initialized and enabled.\n");
 
     phys_init();
-
     console_write("Testing phys_alloc_frame...\n");
     uint32_t f1 = phys_alloc_frame();
     uint32_t f2 = phys_alloc_frame();
 
     if (f1 && f2) {
         console_write("Allocated frames at: 0x");
-        // quick hex print
-        uint32_t vals[2] = {f1, f2};
+        uint32_t vals[2] = { f1, f2 };
         for (int k = 0; k < 2; k++) {
             uint32_t v = vals[k];
             char buf[9];
@@ -109,25 +123,23 @@ void kernel_main(void) {
         console_write("\n");
     }
 
-
     kmalloc_init();
     console_write("Testing kmalloc...\n");
-    
+
     void* a = kmalloc(64);
     void* b = kmalloc(128);
-
-    if (a && b) console_write("kmalloc working.\n");
+    if (a && b)
+        console_write("kmalloc working.\n");
 
     char* buf = kmalloc(256);
-if (buf) {
-    buf[0] = 'O';
-    buf[1] = 'K';
-    buf[2] = 0;
-    console_write("Heap test: ");
-    console_write(buf);
-    console_write("\n");
-}
-
+    if (buf) {
+        buf[0] = 'O';
+        buf[1] = 'K';
+        buf[2] = 0;
+        console_write("Heap test: ");
+        console_write(buf);
+        console_write("\n");
+    }
 
     irq_install();
     console_write("PIC remapped, IRQs installed.\n");
@@ -136,14 +148,14 @@ if (buf) {
     console_write("Timer initialized (100 Hz).\n");
 
     keyboard_install();
+    console_write("Keyboard driver installed.\n");
 
     console_write("Enabling interrupts...\n");
     __asm__ volatile ("sti");
 
+    console_write("Starting Hypnos shell...\n");
     shell_init();
     shell_run();
-
-    console_write("Type on your keyboard; characters should appear here.\n");
 
     for (;;) {
         __asm__ volatile ("hlt");
