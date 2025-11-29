@@ -12,6 +12,7 @@
 #include "shell.h"
 #include "physmem.h"
 // #include "task.h"
+#include "fs.h"
 
 #define VGA_MEMORY   0xB8000
 #define VGA_COLS     80
@@ -42,6 +43,14 @@ static void console_putc(char c) {
         cursor_col = 0;
         cursor_row++;
         console_scroll_if_needed();
+        return;
+    }
+
+    if (c == '\b') {
+        if (cursor_col > 0) {
+            cursor_col--;
+            VGA[cursor_row * VGA_COLS + cursor_col] = vga_entry(' ', text_color);
+        }
         return;
     }
 
@@ -140,6 +149,8 @@ void kernel_main(void) {
         console_write(buf);
         console_write("\n");
     }
+
+    fs_init();
 
     irq_install();
     console_write("PIC remapped, IRQs installed.\n");
