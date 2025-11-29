@@ -7,6 +7,8 @@
 #include "arch/i386/drivers/keyboard.h"
 #include "arch/i386/drivers/timer.h"
 
+extern void switch_to_user_mode(void);
+
 static void ui_itoa(uint32_t v, char* out) {
     char tmp[16];
     int i = 0;
@@ -398,6 +400,10 @@ static void shell_execute(const char *cmd)
     }
     else if (!kstrncmp(cmd, "touch ", 6))
         cmd_touch(cmd + 6);
+    else if (!kstrcmp(cmd, "runuser")) {
+        console_write("Launching first user program in Ring 3...\n");
+        switch_to_user_mode();
+    }
     else if (!kstrncmp(cmd, "cat ", 4))
     {
         const char *name = cmd + 4;

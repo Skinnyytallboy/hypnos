@@ -135,11 +135,11 @@ void kernel_main(void)
 
     banner("Starting Hypnos Shell...");
     shell_init();
+    shell_run();
 
-    extern void switch_to_user_mode(void);
-
-    console_write("\nLaunching first user program...\n");
-    switch_to_user_mode();   // jumps to Ring 3, never returns
+    // extern void switch_to_user_mode(void);
+    // console_write("\nLaunching first user program...\n");
+    // switch_to_user_mode();   // jumps to Ring 3, never returns
 
     for (;;) {
         __asm__ volatile ("hlt");
