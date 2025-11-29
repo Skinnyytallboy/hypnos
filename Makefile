@@ -26,7 +26,8 @@ OBJS        := \
 	$(BUILD)/paging.o \
 	$(BUILD)/kmalloc.o \
 	$(BUILD)/physmem.o \
-	${BUILD}/fs.o
+	${BUILD}/fs.o \
+	$(BUILD)/crypto.o
 # 	$(BUILD)/task.o \
 # 	$(BUILD)/context_switch.o
 	
@@ -34,6 +35,10 @@ OBJS        := \
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+$(BUILD)/crypto.o: kernel/crypto.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/fs.o: kernel/fs.c
 	@mkdir -p $(BUILD)

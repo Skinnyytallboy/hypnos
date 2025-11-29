@@ -13,6 +13,7 @@
 #include "physmem.h"
 // #include "task.h"
 #include "fs.h"
+#include "crypto.h"
 
 #define VGA_MEMORY   0xB8000
 #define VGA_COLS     80
@@ -149,6 +150,9 @@ void kernel_main(void) {
         console_write(buf);
         console_write("\n");
     }
+
+    crypto_set_key("hypnos-default-key");
+    console_write("FS encryption key initialized.\n");
 
     fs_init();
 

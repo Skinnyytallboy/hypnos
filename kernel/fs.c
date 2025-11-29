@@ -1,4 +1,5 @@
 #include "fs.h"
+#include "crypto.h"
 #include "kmalloc.h"
 #include "console.h"
 #include <stddef.h>
@@ -224,7 +225,7 @@ int fs_touch(const char* path)
 
 int fs_write(const char* path, const char* data)
 {
-    if (!path || !data || !data[0]) return -1;
+    if (!path || !data) return -1;
 
     char last[MAX_NAME_LEN];
     fs_node_t* parent = fs_resolve(path, 1, last);
@@ -243,20 +244,34 @@ int fs_write(const char* path, const char* data)
     size_t len = kstrlen(data);
     char* buf = (char*)kmalloc(len + 1);
     if (!buf) return -1;
-    for (size_t i = 0; i < len; i++) buf[i] = data[i];
-    buf[len] = 0;
+
+    /* encrypt plaintext into node->data */
+    crypto_encrypt((const uint8_t*)data, (uint8_t*)buf, len);
+    buf[len] = 0;              /* keep it C-string-like, even if encrypted */
 
     node->data = buf;
     node->size = (uint32_t)len;
+
     return 0;
 }
+
 
 const char* fs_read(const char* path)
 {
     fs_node_t* node = fs_resolve(path, 0, NULL);
-    if (!node || node->is_dir) return NULL;
-    return node->data;
+    if (!node || node->is_dir || !node->data || node->size == 0)
+        return NULL;
+
+    /* allocate buffer for decrypted data */
+    char* buf = (char*)kmalloc(node->size + 1);
+    if (!buf) return NULL;
+
+    crypto_decrypt((const uint8_t*)node->data, (uint8_t*)buf, node->size);
+    buf[node->size] = 0;
+
+    return buf;   /* caller (cat) just prints it; we leak a little, which is fine for now */
 }
+
 
 int fs_chdir(const char* path)
 {
