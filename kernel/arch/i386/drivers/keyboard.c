@@ -21,7 +21,8 @@ static const char keymap[128] = {
     0, ' ',                                                         // 0x39 space
     /* rest unused here */
 };
-
+//configure alt shift tab
+//best
 static void keyboard_callback(void)
 {
     uint8_t scancode = inb(0x60);

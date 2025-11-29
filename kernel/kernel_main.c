@@ -33,6 +33,33 @@
 //     }
 // }
 
+extern volatile uint32_t timer_ticks;   
+
+
+static void sleep_ticks(uint32_t ticks)
+{
+    if (ticks == 0)
+        return;
+
+    uint32_t start = timer_ticks;
+
+    if (start == 0) {
+        /* Timer not running yet: approximate delay using a busy loop.
+         * The constant here is arbitrary; tune it with sleep_timer.
+         */
+        for (volatile uint32_t i = 0; i < ticks * 100000; ++i) {
+            __asm__ volatile("nop");
+        }
+        return;
+    }
+
+    /* Timer is running: use proper tick-based sleep */
+    while ((uint32_t)(timer_ticks - start) < ticks) {
+        __asm__ volatile("hlt");
+    }
+}
+
+
 static void print_ascii_banner(void)
 {
     console_set_theme_banner();
@@ -77,26 +104,28 @@ void kernel_main(void)
     console_set_theme_default();
     console_clear();
 
-    print_ascii_banner();
-    loading_animation("Booting Hypnos");
-
-    banner("=== Hypnos kernel booted ===");
+   
 
     gdt_init();
     ok("GDT initialized.");
+    sleep_ticks(sleep_timer);
 
     idt_init();
     ok("IDT initialized.");
+        sleep_ticks(sleep_timer);
 
     paging_init();
     paging_enable();
     ok("Paging initialized and enabled.");
+     sleep_ticks(sleep_timer);
 
     phys_init();
     ok("Physical memory manager initialized.");
+        sleep_ticks(sleep_timer);
 
     kmalloc_init();
     ok("Kernel heap initialized.");
+        sleep_ticks(sleep_timer);
 
     {
         char* buf = kmalloc(32);
@@ -114,25 +143,35 @@ void kernel_main(void)
     console_write("Security subsystem initialized. Current user: ");
     console_write(sec_get_current_username());
     console_write("\n");
+        sleep_ticks(sleep_timer);
 
     crypto_set_key("hypnos-default-key");
     ok("Filesystem encryption key installed.");
+        sleep_ticks(sleep_timer);
 
     fs_init();
     ok("Filesystem initialized.");
+        sleep_ticks(sleep_timer);
 
     irq_install();
     ok("PIC remapped, IRQs installed.");
+        sleep_ticks(sleep_timer);
 
     timer_install();
     ok("Timer initialized (100 Hz).");
+        sleep_ticks(sleep_timer);
 
     keyboard_install();
     ok("Keyboard driver installed.");
+        sleep_ticks(sleep_timer);
 
     console_write("Enabling interrupts...\n");
+    sleep_ticks(sleep_timer);
     __asm__ volatile ("sti");
 
+     console_clear();
+    print_ascii_banner();
+    banner("=== Hypnos kernel booted ===");
     banner("Starting Hypnos Shell...");
     shell_init();
     shell_run();
