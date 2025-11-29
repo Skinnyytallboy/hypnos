@@ -7,6 +7,17 @@
 #include "arch/i386/drivers/keyboard.h"
 #include "arch/i386/drivers/timer.h"
 
+static void shell_print_prompt(void)
+{
+    console_set_color(COLOR_LIGHT_GREEN, COLOR_BLACK);
+    console_write(sec_get_current_username());
+    console_write("@hypnos ");
+    console_set_color(COLOR_LIGHT_CYAN, COLOR_BLACK);
+    console_write(">");
+    console_set_color(COLOR_LIGHT_GREY, COLOR_BLACK);
+    console_write(" ");
+}
+
 static int kstrcmp(const char *a, const char *b)
 {
     while (*a && (*a == *b))
@@ -189,7 +200,7 @@ void shell_keypress(char c)
         input_buffer[input_len] = 0;
         shell_execute(input_buffer);
         input_len = 0;
-        console_write("> ");
+        shell_print_prompt();
         return;
     }
 
@@ -541,7 +552,7 @@ static void shell_execute(const char *cmd)
 void shell_init(void)
 {
     input_len = 0;
-    console_write("> ");
+    shell_print_prompt();
 }
 
 void shell_run(void)
