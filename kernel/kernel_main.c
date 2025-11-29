@@ -14,6 +14,8 @@
 // #include "task.h"
 #include "fs/fs.h"
 #include "fs/crypto.h"
+#include "log.h"
+#include "security.h"
 
 #define VGA_MEMORY   0xB8000
 #define VGA_COLS     80
@@ -101,11 +103,14 @@ void kernel_main(void) {
     console_clear();
     console_write("Hypnos kernel booted!\n");
 
+    log_init();
+    log_event("kernel: booting");
+
     gdt_init();
     console_write("GDT initialized.\n");
-
     idt_init();
     console_write("IDT initialized.\n");
+
 
     paging_init();
     paging_enable();
@@ -150,6 +155,11 @@ void kernel_main(void) {
         console_write(buf);
         console_write("\n");
     }
+
+    sec_init();
+    console_write("Security subsystem initialized. Current user: ");
+    console_write(sec_get_current_username());
+    console_write("\n");
 
     crypto_set_key("hypnos-default-key");
     console_write("FS encryption key initialized.\n");

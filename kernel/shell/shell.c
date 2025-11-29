@@ -1,25 +1,32 @@
 #include "fs/fs.h"
+#include "security.h"
+#include "log.h"
 #include <stddef.h>
 #include <stdint.h>
 #include "console.h"
 #include "arch/i386/drivers/keyboard.h"
 #include "arch/i386/drivers/timer.h"
 
-static int kstrcmp(const char* a, const char* b) {
-    while (*a && (*a == *b)) {
+static int kstrcmp(const char *a, const char *b)
+{
+    while (*a && (*a == *b))
+    {
         a++;
         b++;
     }
     return (unsigned char)*a - (unsigned char)*b;
 }
 
-static int kstrncmp(const char* a, const char* b, size_t n) {
-    while (n && *a && (*a == *b)) {
+static int kstrncmp(const char *a, const char *b, size_t n)
+{
+    while (n && *a && (*a == *b))
+    {
         a++;
         b++;
         n--;
     }
-    if (n == 0) return 0;
+    if (n == 0)
+        return 0;
     return (unsigned char)*a - (unsigned char)*b;
 }
 
@@ -30,20 +37,59 @@ static size_t input_len = 0;
 
 extern volatile uint32_t timer_ticks;
 
-static void shell_execute(const char* cmd);
+static void shell_execute(const char *cmd);
 
-static void ls_printer(const char* name, int is_dir)
+static void ls_printer(const char *name, int is_dir)
 {
     console_write("  ");
     console_write(name);
-    if (is_dir) console_write("/");
+    if (is_dir)
+        console_write("/");
     console_write("\n");
 }
-static void snap_list_printer(const char* name)
+static void snap_list_printer(const char *name)
 {
     console_write("  ");
     console_write(name);
     console_write("\n");
+}
+
+static void cmd_whoami(void)
+{
+    console_write("Current user: ");
+    console_write(sec_get_current_username());
+    console_write("\n");
+}
+
+static void cmd_users(void)
+{
+    user_t list[8];
+    int n = sec_list_users(list, 8);
+
+    console_write("Users:\n");
+    for (int i = 0; i < n; i++)
+    {
+        console_write("  ");
+        console_write(list[i].name);
+        if (i == sec_get_current_user()->id)
+            console_write(" (current)");
+        console_write("\n");
+    }
+}
+
+static void cmd_login(const char *name)
+{
+    if (!name || !name[0])
+    {
+        console_write("Usage: login <username>\n");
+        return;
+    }
+    sec_login(name);
+}
+
+static void cmd_log_show(void)
+{
+    log_dump();
 }
 
 static void cmd_snap_list(void)
@@ -52,9 +98,10 @@ static void cmd_snap_list(void)
     fs_snap_list(snap_list_printer);
 }
 
-static void cmd_snap_create(const char* name)
+static void cmd_snap_create(const char *name)
 {
-    if (!name || !name[0]) {
+    if (!name || !name[0])
+    {
         console_write("Usage: snap-create <name>\n");
         return;
     }
@@ -64,18 +111,22 @@ static void cmd_snap_create(const char* name)
         console_write("snap-create: error (maybe name exists?).\n");
 }
 
-static void cmd_snap_restore(const char* name)
+static void cmd_snap_restore(const char *name)
 {
-    if (!name || !name[0]) {
+    if (!name || !name[0])
+    {
         console_write("Usage: snap-restore <name>\n");
         return;
     }
-    if (fs_snap_restore(name) == 0) {
+    if (fs_snap_restore(name) == 0)
+    {
         console_write("Snapshot restored.\n");
         console_write("CWD is now ");
         console_write(fs_getcwd());
         console_write("\n");
-    } else {
+    }
+    else
+    {
         console_write("snap-restore: no such snapshot.\n");
     }
 }
@@ -94,9 +145,10 @@ static void cmd_pwd(void)
     console_write("\n");
 }
 
-static void cmd_cd(const char* path)
+static void cmd_cd(const char *path)
 {
-    if (!path || !path[0]) {
+    if (!path || !path[0])
+    {
         console_write("Usage: cd <path>\n");
         return;
     }
@@ -106,9 +158,10 @@ static void cmd_cd(const char* path)
         console_write("cd: no such directory.\n");
 }
 
-static void cmd_mkdir(const char* name)
+static void cmd_mkdir(const char *name)
 {
-    if (!name || !name[0]) {
+    if (!name || !name[0])
+    {
         console_write("Usage: mkdir <name>\n");
         return;
     }
@@ -118,18 +171,20 @@ static void cmd_mkdir(const char* name)
         console_write("mkdir: error.\n");
 }
 
-
 void shell_keypress(char c)
 {
-    if (c == '\b') {
-        if (input_len > 0) {
+    if (c == '\b')
+    {
+        if (input_len > 0)
+        {
             input_len--;
             console_write("\b");
         }
         return;
     }
 
-    if (c == '\n') {
+    if (c == '\n')
+    {
         console_write("\n");
         input_buffer[input_len] = 0;
         shell_execute(input_buffer);
@@ -138,14 +193,16 @@ void shell_keypress(char c)
         return;
     }
 
-    if (input_len < SHELL_INPUT_MAX - 1) {
+    if (input_len < SHELL_INPUT_MAX - 1)
+    {
         input_buffer[input_len++] = c;
         char s[2] = {c, 0};
         console_write(s);
     }
 }
 
-static void cmd_help(void) {
+static void cmd_help(void)
+{
     console_write("Available commands:\n");
     console_write("  help     - show this message\n");
     console_write("  clear    - clear the screen\n");
@@ -168,10 +225,10 @@ static void cmd_help(void) {
 //     fs_list(ls_printer);
 // }
 
-
-static void cmd_touch(const char* arg)
+static void cmd_touch(const char *arg)
 {
-    if (!arg || !arg[0]) {
+    if (!arg || !arg[0])
+    {
         console_write("Usage: touch <name>\n");
         return;
     }
@@ -181,7 +238,7 @@ static void cmd_touch(const char* arg)
         console_write("touch: error.\n");
 }
 
-static void cmd_write(const char* name, const char* text)
+static void cmd_write(const char *name, const char *text)
 {
     if (fs_write(name, text) == 0)
         console_write("File written.\n");
@@ -189,21 +246,22 @@ static void cmd_write(const char* name, const char* text)
         console_write("write: error.\n");
 }
 
-static void cmd_cat(const char* name)
+static void cmd_cat(const char *name)
 {
-    if (!name || !name[0]) {
+    if (!name || !name[0])
+    {
         console_write("Usage: cat <name>\n");
         return;
     }
-    const char* data = fs_read(name);
-    if (!data) {
+    const char *data = fs_read(name);
+    if (!data)
+    {
         console_write("cat: no such file or empty.\n");
         return;
     }
     console_write(data);
     console_write("\n");
 }
-
 
 static void cmd_clear(void) { console_clear(); }
 
@@ -215,10 +273,14 @@ static void cmd_uptime(void)
     int len = 0;
     uint32_t t = ticks;
     char tmp[32];
-    if (t == 0) {
+    if (t == 0)
+    {
         tmp[len++] = '0';
-    } else {
-        while (t > 0) {
+    }
+    else
+    {
+        while (t > 0)
+        {
             tmp[len++] = '0' + (t % 10);
             t /= 10;
         }
@@ -233,12 +295,14 @@ static void cmd_uptime(void)
     console_write("\n");
 }
 
-static void cmd_echo(const char* msg) {
+static void cmd_echo(const char *msg)
+{
     console_write(msg);
     console_write("\n");
 }
 
-static void cmd_panic(void) {
+static void cmd_panic(void)
+{
     console_write("Triggering division by zero...\n");
     int zero = 0;
     int x = 1 / zero;
@@ -246,18 +310,25 @@ static void cmd_panic(void) {
 }
 
 /* split "cmd arg" into arg (returns pointer inside original string or NULL) */
-static const char* skip_word(const char* s) {
-    while (*s && *s != ' ') s++;
-    while (*s == ' ') s++;
+static const char *skip_word(const char *s)
+{
+    while (*s && *s != ' ')
+        s++;
+    while (*s == ' ')
+        s++;
     return s;
 }
 
 /* copies next word into dst, returns 0 on success, -1 if no word */
-static int next_word(const char* s, char* dst, size_t dst_size) {
-    while (*s == ' ') s++;
-    if (!*s) return -1;
+static int next_word(const char *s, char *dst, size_t dst_size)
+{
+    while (*s == ' ')
+        s++;
+    if (!*s)
+        return -1;
     size_t i = 0;
-    while (*s && *s != ' ' && i + 1 < dst_size) {
+    while (*s && *s != ' ' && i + 1 < dst_size)
+    {
         dst[i++] = *s++;
     }
     dst[i] = 0;
@@ -275,101 +346,208 @@ static int next_word(const char* s, char* dst, size_t dst_size) {
 //     else if (!kstrcmp(cmd, "panic")) cmd_panic();
 //     else console_write("Unknown command. Type 'help'.\n");
 // }
-static void shell_execute(const char* cmd)
+static void shell_execute(const char *cmd)
 {
     if (cmd[0] == 0)
         return;
 
-    if (!kstrcmp(cmd, "help")) {
+    if (!kstrcmp(cmd, "help"))
+    {
         cmd_help();
     }
-    else if (!kstrcmp(cmd, "clear")) {
+    else if (!kstrcmp(cmd, "clear"))
+    {
         cmd_clear();
     }
-    else if (!kstrcmp(cmd, "uptime")) {
+    else if (!kstrcmp(cmd, "uptime"))
+    {
         cmd_uptime();
     }
-    else if (!kstrncmp(cmd, "echo ", 5)) {
+    else if (!kstrncmp(cmd, "echo ", 5))
+    {
         cmd_echo(cmd + 5);
     }
-    else if (!kstrcmp(cmd, "panic")) {
+    else if (!kstrcmp(cmd, "panic"))
+    {
         cmd_panic();
     }
-    else if (!kstrcmp(cmd, "ls")) {
+    else if (!kstrcmp(cmd, "ls"))
+    {
         cmd_ls();
     }
-    else if (!kstrcmp(cmd, "pwd")) {
+    else if (!kstrcmp(cmd, "pwd"))
+    {
         cmd_pwd();
     }
-    else if (!kstrncmp(cmd, "cd ", 3)) {
+    else if (!kstrncmp(cmd, "cd ", 3))
+    {
         cmd_cd(cmd + 3);
     }
-    else if (!kstrncmp(cmd, "mkdir ", 6)) {
-        cmd_mkdir(cmd + 6);
+    else if (!kstrncmp(cmd, "mkdir ", 6))
+    {
+        const char *name = cmd + 6;
+        while (*name == ' ')
+            name++;
+
+        if (sec_require_perm(PERM_WRITE, "create directory") != 0)
+            return;
+
+        if (fs_mkdir(name) == 0)
+        {
+            console_write("Directory created.\n");
+            log_event("fs: mkdir");
+        }
+        else
+        {
+            console_write("mkdir: error.\n");
+            log_event("fs: mkdir error");
+        }
     }
-    else if (!kstrncmp(cmd, "touch ", 6)) {
+
+    else if (!kstrncmp(cmd, "touch ", 6))
+    {
         cmd_touch(cmd + 6);
     }
-    else if (!kstrncmp(cmd, "cat ", 4)) {
-    const char* name = cmd + 4;
-    while (*name == ' ') name++;
-    cmd_cat(name);
-}
+    else if (!kstrncmp(cmd, "cat ", 4))
+    {
+        const char *name = cmd + 4;
+        while (*name == ' ')
+            name++;
 
-        else if (!kstrcmp(cmd, "snap-list")) {
+        if (sec_require_perm(PERM_READ, "read file") != 0)
+            return;
+
+        const char *data = fs_read(name);
+        if (!data)
+        {
+            console_write("cat: no such file or empty.\n");
+            log_event("fs: read fail");
+            return;
+        }
+        console_write(data);
+        console_write("\n");
+        log_event("fs: read");
+    }
+
+    else if (!kstrcmp(cmd, "snap-list"))
+    {
         cmd_snap_list();
     }
-    else if (!kstrncmp(cmd, "snap-create ", 12)) {
-        cmd_snap_create(cmd + 12);
-    }
-    else if (!kstrncmp(cmd, "snap-restore ", 13)) {
-        cmd_snap_restore(cmd + 13);
-    }
-else if (!kstrncmp(cmd, "write ", 6)) {
-    const char* p = cmd + 6;
+    else if (!kstrncmp(cmd, "snap-create ", 12))
+    {
+        const char *name = cmd + 12;
+        while (*name == ' ')
+            name++;
 
-    // 1) skip spaces before filename
-    while (*p == ' ') p++;
+        if (sec_require_perm(PERM_SNAP, "snapshot create") != 0)
+            return;
 
-    // 2) extract filename
-    char name[32];
-    int i = 0;
-    while (*p && *p != ' ' && i < (int)sizeof(name) - 1) {
-        name[i++] = *p++;
-    }
-    name[i] = '\0';
-
-    // 3) skip spaces before text
-    while (*p == ' ') p++;
-
-    // now p points to the text (can be multi-word)
-    if (!name[0] || !*p) {
-        console_write("Usage: write <name> <text>\n");
-        return;
+        if (fs_snap_create(name) == 0)
+        {
+            console_write("Snapshot created.\n");
+            log_event("fs: snapshot create");
+        }
+        else
+        {
+            console_write("snap-create: error.\n");
+            log_event("fs: snapshot create error");
+        }
     }
 
-    // 4) just pass the rest of the line as-is
-    if (fs_write(name, p) == 0)
-        console_write("File written.\n");
+    else if (!kstrncmp(cmd, "snap-restore ", 13))
+    {
+        const char *name = cmd + 13;
+        while (*name == ' ')
+            name++;
+
+        if (sec_require_perm(PERM_SNAP, "snapshot restore") != 0)
+            return;
+
+        if (fs_snap_restore(name) == 0)
+        {
+            console_write("Snapshot restored.\n");
+            log_event("fs: snapshot restore");
+        }
+        else
+        {
+            console_write("snap-restore: error.\n");
+            log_event("fs: snapshot restore error");
+        }
+    }
+    else if (!kstrcmp(cmd, "whoami"))
+    {
+        cmd_whoami();
+    }
+    else if (!kstrcmp(cmd, "users"))
+    {
+        cmd_users();
+    }
+    else if (!kstrncmp(cmd, "login ", 6))
+    {
+        const char *name = cmd + 6;
+        while (*name == ' ')
+            name++;
+        cmd_login(name);
+    }
+    else if (!kstrcmp(cmd, "log"))
+    {
+        cmd_log_show();
+    }
+
+    else if (!kstrncmp(cmd, "write ", 6))
+    {
+        const char *p = cmd + 6;
+
+        while (*p == ' ')
+            p++;
+        char name[32];
+        int i = 0;
+        while (*p && *p != ' ' && i < (int)sizeof(name) - 1)
+        {
+            name[i++] = *p++;
+        }
+        name[i] = '\0';
+
+        while (*p == ' ')
+            p++;
+
+        if (!name[0] || !*p)
+        {
+            console_write("Usage: write <name> <text>\n");
+            return;
+        }
+
+        if (sec_require_perm(PERM_WRITE, "write file") != 0)
+            return;
+
+        if (fs_write(name, p) == 0)
+        {
+            console_write("File written.\n");
+            log_event("fs: write");
+        }
+        else
+        {
+            console_write("write: error.\n");
+            log_event("fs: write error");
+        }
+    }
+
     else
-        console_write("write: error.\n");
-}
-
-
-    else {
+    {
         console_write("Unknown command. Type 'help'.\n");
     }
 }
 
-
-void shell_init(void) {
+void shell_init(void)
+{
     input_len = 0;
     console_write("> ");
 }
 
 void shell_run(void)
 {
-    for (;;) {
-        __asm__ volatile ("hlt");
+    for (;;)
+    {
+        __asm__ volatile("hlt");
     }
 }

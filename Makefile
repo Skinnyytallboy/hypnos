@@ -29,11 +29,22 @@ OBJS := \
 	$(BUILD)/fs.o \
 	$(BUILD)/task.o \
 	$(BUILD)/shell.o \
-	$(BUILD)/kernel_main.o
+	$(BUILD)/kernel_main.o \
+	$(BUILD)/security.o \
+    $(BUILD)/log.o
+
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+$(BUILD)/security.o: kernel/security.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/log.o: kernel/log.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/entry.o: kernel/arch/i386/start/entry.S
 	@mkdir -p $(BUILD)
