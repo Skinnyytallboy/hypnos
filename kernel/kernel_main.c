@@ -2,18 +2,18 @@
 #include <stddef.h>
 
 #include "console.h"
-#include "gdt.h"
-#include "idt.h"
-#include "irq.h"
-#include "timer.h"
-#include "keyboard.h"
-#include "paging.h"
-#include "kmalloc.h"
-#include "shell.h"
-#include "physmem.h"
+#include "arch/i386/cpu/gdt.h"
+#include "arch/i386/cpu/idt.h"
+#include "arch/i386/cpu/irq.h"
+#include "arch/i386/drivers/timer.h"
+#include "arch/i386/drivers/keyboard.h"
+#include "arch/i386/mm/paging.h"
+#include "arch/i386/mm/physmem.h"
+#include "arch/i386/mm/kmalloc.h"
+#include "shell/shell.h"
 // #include "task.h"
-#include "fs.h"
-#include "crypto.h"
+#include "fs/fs.h"
+#include "fs/crypto.h"
 
 #define VGA_MEMORY   0xB8000
 #define VGA_COLS     80

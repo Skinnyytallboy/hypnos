@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "irq.h"
+#include "arch/i386/cpu/irq.h"
 #include "console.h"
 
 static inline void outb(uint16_t port, uint8_t value) {

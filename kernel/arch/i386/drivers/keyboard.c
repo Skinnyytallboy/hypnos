@@ -1,7 +1,7 @@
 extern void shell_keypress(char c);
 
 #include <stdint.h>
-#include "irq.h"
+#include "arch/i386/cpu/irq.h"
 #include "console.h"
 
 static inline uint8_t inb(uint16_t port) {

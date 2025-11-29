@@ -1,6 +1,6 @@
-#include "fs.h"
-#include "crypto.h"
-#include "kmalloc.h"
+#include "fs/fs.h"
+#include "fs/crypto.h"
+#include "arch/i386/mm/kmalloc.h"
 #include "console.h"
 #include <stddef.h>
 

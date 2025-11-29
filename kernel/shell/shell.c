@@ -1,9 +1,9 @@
-#include "fs.h"
+#include "fs/fs.h"
 #include <stddef.h>
 #include <stdint.h>
 #include "console.h"
-#include "keyboard.h"
-#include "timer.h"
+#include "arch/i386/drivers/keyboard.h"
+#include "arch/i386/drivers/timer.h"
 
 static int kstrcmp(const char* a, const char* b) {
     while (*a && (*a == *b)) {

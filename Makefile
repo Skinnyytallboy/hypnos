@@ -10,105 +10,106 @@ CFLAGS      := -std=c11 -ffreestanding -fno-stack-protector -fno-pie -O2 -Wall -
 ASFLAGS     := -m32 -ffreestanding -fno-pie -O2
 LDFLAGS     := -nostdlib
 
-OBJS        := \
+OBJS := \
 	$(BUILD)/entry.o \
-	$(BUILD)/kernel_main.o \
+	$(BUILD)/context_switch.o \
 	$(BUILD)/gdt.o \
 	$(BUILD)/gdt_flush.o \
 	$(BUILD)/idt.o \
-	$(BUILD)/isr.o \
+	$(BUILD)/isr_c.o \
 	$(BUILD)/isr_s.o \
-	$(BUILD)/irq.o \
+	$(BUILD)/irq_c.o \
 	$(BUILD)/irq_s.o \
-	$(BUILD)/timer.o \
 	$(BUILD)/keyboard.o \
-	$(BUILD)/shell.o \
-	$(BUILD)/paging.o \
+	$(BUILD)/timer.o \
 	$(BUILD)/kmalloc.o \
+	$(BUILD)/paging.o \
 	$(BUILD)/physmem.o \
-	${BUILD}/fs.o \
-	$(BUILD)/crypto.o
-# 	$(BUILD)/task.o \
-# 	$(BUILD)/context_switch.o
-	
+	$(BUILD)/crypto.o \
+	$(BUILD)/fs.o \
+	$(BUILD)/task.o \
+	$(BUILD)/shell.o \
+	$(BUILD)/kernel_main.o
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
 
-$(BUILD)/crypto.o: kernel/crypto.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/fs.o: kernel/fs.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-# $(BUILD)/task.o: kernel/task.c
-# 	$(CC32) $(CFLAGS) -c $< -o $@
-
-# $(BUILD)/context_switch.o: kernel/context_switch.S
-# 	$(CC32) $(ASFLAGS) -c $< -o $@
-
-$(BUILD)/physmem.o: kernel/physmem.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/paging.o: kernel/paging.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/kmalloc.o: kernel/kmalloc.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/shell.o: kernel/shell.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/keyboard.o: kernel/keyboard.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/irq.o: kernel/irq.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/irq_s.o: kernel/irq.S
+$(BUILD)/entry.o: kernel/arch/i386/start/entry.S
 	@mkdir -p $(BUILD)
 	$(CC32) $(ASFLAGS) -c $< -o $@
 
-$(BUILD)/timer.o: kernel/timer.c
+$(BUILD)/context_switch.o: kernel/arch/i386/start/context_switch.S
+	@mkdir -p $(BUILD)
+	$(CC32) $(ASFLAGS) -c $< -o $@
+
+$(BUILD)/gdt.o: kernel/arch/i386/cpu/gdt.c
 	@mkdir -p $(BUILD)
 	$(CC32) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/entry.o: kernel/entry.S
+$(BUILD)/gdt_flush.o: kernel/arch/i386/cpu/gdt_flush.S
 	@mkdir -p $(BUILD)
 	$(CC32) $(ASFLAGS) -c $< -o $@
+
+$(BUILD)/idt.o: kernel/arch/i386/cpu/idt.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/isr_c.o: kernel/arch/i386/cpu/isr.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/irq_c.o: kernel/arch/i386/cpu/irq.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/isr_s.o: kernel/arch/i386/cpu/isr.S
+	@mkdir -p $(BUILD)
+	$(CC32) $(ASFLAGS) -c $< -o $@
+
+$(BUILD)/irq_s.o: kernel/arch/i386/cpu/irq.S
+	@mkdir -p $(BUILD)
+	$(CC32) $(ASFLAGS) -c $< -o $@
+
+$(BUILD)/keyboard.o: kernel/arch/i386/drivers/keyboard.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/timer.o: kernel/arch/i386/drivers/timer.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/kmalloc.o: kernel/arch/i386/mm/kmalloc.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/paging.o: kernel/arch/i386/mm/paging.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/physmem.o: kernel/arch/i386/mm/physmem.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/crypto.o: kernel/fs/crypto.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/fs.o: kernel/fs/fs.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/task.o: kernel/sched/task.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/shell.o: kernel/shell/shell.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/kernel_main.o: kernel/kernel_main.c
 	@mkdir -p $(BUILD)
 	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/gdt.o: kernel/gdt.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/gdt_flush.o: kernel/gdt_flush.S
-	@mkdir -p $(BUILD)
-	$(CC32) $(ASFLAGS) -c $< -o $@
-
-$(BUILD)/idt.o: kernel/idt.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/isr.o: kernel/isr.c
-	@mkdir -p $(BUILD)
-	$(CC32) $(CFLAGS) -c $< -o $@
-
-$(BUILD)/isr_s.o: kernel/isr.S
-	@mkdir -p $(BUILD)
-	$(CC32) $(ASFLAGS) -c $< -o $@
 
 $(BUILD)/$(TARGET): $(OBJS) linker.ld
 	$(LD32) -T linker.ld -o $@ $(OBJS)

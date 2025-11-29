@@ -1,5 +1,5 @@
 #include "task.h"
-#include "kmalloc.h"
+#include "arch/i386/mm/kmalloc.h"
 #include "console.h"
 
 extern void start_task(uint32_t new_esp, uint32_t new_ebp, uint32_t new_eip);
