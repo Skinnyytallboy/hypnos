@@ -31,6 +31,18 @@ static uint16_t* const vga_buffer = (uint16_t*)0xB8000;
 static size_t  console_row   = 0;
 static size_t  console_col   = 0;
 static uint8_t console_color = (COLOR_LIGHT_GREY | (COLOR_BLACK << 4));
+static inline void console_get_cursor(size_t* row, size_t* col) {
+    if (row) *row = console_row;
+    if (col) *col = console_col;
+}
+
+static inline void console_set_cursor(size_t row, size_t col) {
+    if (row >= VGA_HEIGHT) row = VGA_HEIGHT - 1;
+    if (col >= VGA_WIDTH)  col = VGA_WIDTH - 1;
+    console_row = row;
+    console_col = col;
+}
+
 
 static inline uint8_t vga_entry_color(uint8_t fg, uint8_t bg) {
     return fg | (bg << 4);

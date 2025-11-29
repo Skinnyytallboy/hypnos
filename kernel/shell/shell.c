@@ -7,15 +7,23 @@
 #include "arch/i386/drivers/keyboard.h"
 #include "arch/i386/drivers/timer.h"
 
-static void shell_print_prompt(void)
-{
-    console_set_color(COLOR_LIGHT_GREEN, COLOR_BLACK);
-    console_write(sec_get_current_username());
-    console_write("@hypnos ");
-    console_set_color(COLOR_LIGHT_CYAN, COLOR_BLACK);
-    console_write(">");
-    console_set_color(COLOR_LIGHT_GREY, COLOR_BLACK);
-    console_write(" ");
+static void ui_itoa(uint32_t v, char* out) {
+    char tmp[16];
+    int i = 0;
+    if (v == 0) {
+        out[0] = '0';
+        out[1] = 0;
+        return;
+    }
+    while (v > 0 && i < 15) {
+        tmp[i++] = '0' + (v % 10);
+        v /= 10;
+    }
+    int j = 0;
+    while (i > 0) {
+        out[j++] = tmp[--i];
+    }
+    out[j] = 0;
 }
 
 static int kstrcmp(const char *a, const char *b)
@@ -41,9 +49,64 @@ static int kstrncmp(const char *a, const char *b, size_t n)
     return (unsigned char)*a - (unsigned char)*b;
 }
 
+static void shell_draw_status_bar(void)
+{
+    uint32_t sec        = timer_get_seconds();
+    const char* user    = sec_get_current_username();
+
+    char buf[80];
+    int pos = 0;
+
+    const char* p = " user: ";
+    while (*p && pos < 79) buf[pos++] = *p++;
+    p = user;
+    while (*p && pos < 79) buf[pos++] = *p++;
+
+    const char* mid = " | uptime: ";
+    p = mid;
+    while (*p && pos < 79) buf[pos++] = *p++;
+    char num[16];
+    ui_itoa(sec, num);
+    p = num;
+    while (*p && pos < 79) buf[pos++] = *p++;
+    if (pos < 79) buf[pos++] = 's';
+
+    const char* fsinfo = " | fs: RAM-FS ";
+    p = fsinfo;
+    while (*p && pos < 79) buf[pos++] = *p++;
+
+    while (pos < 79) buf[pos++] = ' ';
+    buf[pos] = 0;
+
+    size_t old_row, old_col;
+    console_get_cursor(&old_row, &old_col);
+
+    int bar_row = VGA_HEIGHT - 1;
+
+    console_set_color(COLOR_BLACK, COLOR_LIGHT_GREY); 
+    for (int x = 0; x < 79; x++) {
+        console_put_at(buf[x], x, bar_row);
+    }
+    console_set_theme_default();
+    console_set_cursor(old_row, old_col);
+}
+
+static void shell_print_prompt(void)
+{
+    shell_draw_status_bar();
+
+    console_set_color(COLOR_LIGHT_GREEN, COLOR_BLACK);
+    console_write(sec_get_current_username());
+    console_write("@hypnos ");
+    console_set_color(COLOR_LIGHT_CYAN, COLOR_BLACK);
+    console_write(">");
+    console_set_theme_default();
+    console_write(" ");
+}
+
 #define SHELL_INPUT_MAX 128
 
-static char input_buffer[SHELL_INPUT_MAX];
+static char   input_buffer[SHELL_INPUT_MAX];
 static size_t input_len = 0;
 
 extern volatile uint32_t timer_ticks;
@@ -58,6 +121,7 @@ static void ls_printer(const char *name, int is_dir)
         console_write("/");
     console_write("\n");
 }
+
 static void snap_list_printer(const char *name)
 {
     console_write("  ");
@@ -98,10 +162,7 @@ static void cmd_login(const char *name)
     sec_login(name);
 }
 
-static void cmd_log_show(void)
-{
-    log_dump();
-}
+static void cmd_log_show(void) { log_dump(); }
 
 static void cmd_snap_list(void)
 {
@@ -181,60 +242,6 @@ static void cmd_mkdir(const char *name)
     else
         console_write("mkdir: error.\n");
 }
-
-void shell_keypress(char c)
-{
-    if (c == '\b')
-    {
-        if (input_len > 0)
-        {
-            input_len--;
-            console_write("\b");
-        }
-        return;
-    }
-
-    if (c == '\n')
-    {
-        console_write("\n");
-        input_buffer[input_len] = 0;
-        shell_execute(input_buffer);
-        input_len = 0;
-        shell_print_prompt();
-        return;
-    }
-
-    if (input_len < SHELL_INPUT_MAX - 1)
-    {
-        input_buffer[input_len++] = c;
-        char s[2] = {c, 0};
-        console_write(s);
-    }
-}
-
-static void cmd_help(void)
-{
-    console_write("Available commands:\n");
-    console_write("  help     - show this message\n");
-    console_write("  clear    - clear the screen\n");
-    console_write("  uptime   - show ticks since boot\n");
-    console_write("  echo X   - print X\n");
-    console_write("  panic    - cause an exception\n");
-}
-
-// static void ls_printer(const char* name, int is_dir)
-// {
-//     (void)is_dir;
-//     console_write("  ");
-//     console_write(name);
-//     console_write("\n");
-// }
-
-// static void cmd_ls(void)
-// {
-//     console_write("Files in / :\n");
-//     fs_list(ls_printer);
-// }
 
 static void cmd_touch(const char *arg)
 {
@@ -330,33 +337,6 @@ static const char *skip_word(const char *s)
     return s;
 }
 
-/* copies next word into dst, returns 0 on success, -1 if no word */
-static int next_word(const char *s, char *dst, size_t dst_size)
-{
-    while (*s == ' ')
-        s++;
-    if (!*s)
-        return -1;
-    size_t i = 0;
-    while (*s && *s != ' ' && i + 1 < dst_size)
-    {
-        dst[i++] = *s++;
-    }
-    dst[i] = 0;
-    return 0;
-}
-
-// static void shell_execute(const char* cmd)
-// {
-//     if (cmd[0] == 0)
-//         return;
-//     if (!kstrcmp(cmd, "help")) cmd_help();
-//     else if (!kstrcmp(cmd, "clear")) cmd_clear();
-//     else if (!kstrcmp(cmd, "uptime")) cmd_uptime();
-//     else if (!kstrncmp(cmd, "echo ", 5)) cmd_echo(cmd + 5);
-//     else if (!kstrcmp(cmd, "panic")) cmd_panic();
-//     else console_write("Unknown command. Type 'help'.\n");
-// }
 static void shell_execute(const char *cmd)
 {
     if (cmd[0] == 0)
@@ -364,36 +344,38 @@ static void shell_execute(const char *cmd)
 
     if (!kstrcmp(cmd, "help"))
     {
-        cmd_help();
+        console_write("Available commands:\n");
+        console_write("  help          - show this message\n");
+        console_write("  clear         - clear the screen\n");
+        console_write("  uptime        - show ticks since boot\n");
+        console_write("  echo X        - print X\n");
+        console_write("  panic         - cause an exception\n");
+        console_write("  ls            - list directory\n");
+        console_write("  pwd           - print working directory\n");
+        console_write("  cd <path>     - change directory\n");
+        console_write("  mkdir <name>  - make directory\n");
+        console_write("  touch <name>  - create/update file\n");
+        console_write("  write f txt   - write text to file\n");
+        console_write("  cat <name>    - show file contents\n");
+        console_write("  snap-*        - snapshot commands\n");
+        console_write("  whoami/users  - security info\n");
+        console_write("  login <user>  - switch user\n");
+        console_write("  log           - show audit log\n");
     }
     else if (!kstrcmp(cmd, "clear"))
-    {
         cmd_clear();
-    }
     else if (!kstrcmp(cmd, "uptime"))
-    {
         cmd_uptime();
-    }
     else if (!kstrncmp(cmd, "echo ", 5))
-    {
         cmd_echo(cmd + 5);
-    }
     else if (!kstrcmp(cmd, "panic"))
-    {
         cmd_panic();
-    }
     else if (!kstrcmp(cmd, "ls"))
-    {
         cmd_ls();
-    }
     else if (!kstrcmp(cmd, "pwd"))
-    {
         cmd_pwd();
-    }
     else if (!kstrncmp(cmd, "cd ", 3))
-    {
         cmd_cd(cmd + 3);
-    }
     else if (!kstrncmp(cmd, "mkdir ", 6))
     {
         const char *name = cmd + 6;
@@ -414,11 +396,8 @@ static void shell_execute(const char *cmd)
             log_event("fs: mkdir error");
         }
     }
-
     else if (!kstrncmp(cmd, "touch ", 6))
-    {
         cmd_touch(cmd + 6);
-    }
     else if (!kstrncmp(cmd, "cat ", 4))
     {
         const char *name = cmd + 4;
@@ -439,11 +418,8 @@ static void shell_execute(const char *cmd)
         console_write("\n");
         log_event("fs: read");
     }
-
     else if (!kstrcmp(cmd, "snap-list"))
-    {
         cmd_snap_list();
-    }
     else if (!kstrncmp(cmd, "snap-create ", 12))
     {
         const char *name = cmd + 12;
@@ -458,15 +434,12 @@ static void shell_execute(const char *cmd)
             console_write("Snapshot created.\n");
             log_event("fs: snapshot create");
         }
-        else
-        {
+        else {
             console_write("snap-create: error.\n");
             log_event("fs: snapshot create error");
         }
     }
-
-    else if (!kstrncmp(cmd, "snap-restore ", 13))
-    {
+    else if (!kstrncmp(cmd, "snap-restore ", 13)) {
         const char *name = cmd + 13;
         while (*name == ' ')
             name++;
@@ -486,13 +459,9 @@ static void shell_execute(const char *cmd)
         }
     }
     else if (!kstrcmp(cmd, "whoami"))
-    {
         cmd_whoami();
-    }
     else if (!kstrcmp(cmd, "users"))
-    {
         cmd_users();
-    }
     else if (!kstrncmp(cmd, "login ", 6))
     {
         const char *name = cmd + 6;
@@ -501,10 +470,7 @@ static void shell_execute(const char *cmd)
         cmd_login(name);
     }
     else if (!kstrcmp(cmd, "log"))
-    {
         cmd_log_show();
-    }
-
     else if (!kstrncmp(cmd, "write ", 6))
     {
         const char *p = cmd + 6;
@@ -513,10 +479,7 @@ static void shell_execute(const char *cmd)
             p++;
         char name[32];
         int i = 0;
-        while (*p && *p != ' ' && i < (int)sizeof(name) - 1)
-        {
-            name[i++] = *p++;
-        }
+        while (*p && *p != ' ' && i < (int)sizeof(name) - 1) { name[i++] = *p++; }
         name[i] = '\0';
 
         while (*p == ' ')
@@ -530,7 +493,6 @@ static void shell_execute(const char *cmd)
 
         if (sec_require_perm(PERM_WRITE, "write file") != 0)
             return;
-
         if (fs_write(name, p) == 0)
         {
             console_write("File written.\n");
@@ -542,23 +504,41 @@ static void shell_execute(const char *cmd)
             log_event("fs: write error");
         }
     }
-
     else
-    {
         console_write("Unknown command. Type 'help'.\n");
+}
+
+void shell_keypress(char c) {
+    if (c == '\b')
+    {
+        if (input_len > 0)
+        {
+            input_len--;
+            console_write("\b");
+        }
+        return;
+    }
+    if (c == '\n')
+    {
+        console_write("\n");
+        input_buffer[input_len] = 0;
+        shell_execute(input_buffer);
+        input_len = 0;
+        shell_print_prompt();
+        return;
+    }
+    if (input_len < SHELL_INPUT_MAX - 1)
+    {
+        input_buffer[input_len++] = c;
+        char s[2] = {c, 0};
+        console_write(s);
     }
 }
 
-void shell_init(void)
-{
-    input_len = 0;
-    shell_print_prompt();
-}
+void shell_init(void) { input_len = 0; }
 
 void shell_run(void)
 {
-    for (;;)
-    {
-        __asm__ volatile("hlt");
-    }
+    shell_print_prompt();
+    for (;;) __asm__ volatile("hlt");
 }

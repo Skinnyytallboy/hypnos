@@ -9,6 +9,16 @@ static inline void outb(uint16_t port, uint8_t value) {
 //static volatile uint32_t timer_ticks = 0;
 volatile uint32_t timer_ticks = 0;
 
+uint32_t timer_get_ticks(void)
+{
+    return timer_ticks;
+}
+
+uint32_t timer_get_seconds(void)
+{
+    return timer_ticks / 100;
+}
+
 static void timer_callback(void) {
     timer_ticks++;
     // if (timer_ticks % 100 == 0)   // roughly once per second at 100 Hz
