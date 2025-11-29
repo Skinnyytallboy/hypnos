@@ -20,6 +20,7 @@ OBJS := \
 	$(BUILD)/isr_s.o \
 	$(BUILD)/irq_c.o \
 	$(BUILD)/irq_s.o \
+	$(BUILD)/tss_flush.o \
 	$(BUILD)/keyboard.o \
 	$(BUILD)/timer.o \
 	$(BUILD)/kmalloc.o \
@@ -31,12 +32,31 @@ OBJS := \
 	$(BUILD)/shell.o \
 	$(BUILD)/kernel_main.o \
 	$(BUILD)/security.o \
+	$(BUILD)/user_mode.o \
+	$(BUILD)/user_program.o \
     $(BUILD)/log.o
+# 	$(BUILD)/map_user_pages.o \
 
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+# $(BUILD)/map_user_pages.o: kernel/user/map_user_pages.c
+# 	@mkdir -p $(BUILD)
+# 	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/user_program.o: kernel/user/user_program.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/user_mode.o: kernel/arch/i386/start/user_mode.S
+	@mkdir -p $(BUILD)/kernel/arch/i386/start
+	$(CC32) $(ASFLAGS) -c $< -o $@
+
+$(BUILD)/tss_flush.o: kernel/arch/i386/cpu/tss_flush.S
+	@mkdir -p $(BUILD)
+	$(CC32) $(ASFLAGS) -c $< -o $@
 
 $(BUILD)/security.o: kernel/security.c
 	@mkdir -p $(BUILD)
