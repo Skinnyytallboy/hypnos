@@ -1,6 +1,7 @@
 #include "fs/fs.h"
 #include "security.h"
 #include "log.h"
+#include "editor.h"
 #include <stddef.h>
 #include <stdint.h>
 #include "console.h"
@@ -415,6 +416,7 @@ static void shell_execute(const char *cmd)
         console_write("  touch <name>  - create/update file\n");
         console_write("  write f txt   - write text to file\n");
         console_write("  cat <name>    - show file contents\n");
+        console_write("  edit <file>   - simple text editor\n");
         console_write("  snap-*        - snapshot commands\n");
         console_write("  whoami/users  - security info\n");
         console_write("  login <user>  - switch user\n");
@@ -432,10 +434,21 @@ static void shell_execute(const char *cmd)
         cmd_ls();
     else if (!kstrcmp(cmd, "pwd"))
         cmd_pwd();
-    else if (!kstrcmp(cmd, "cd.."))              // <-- new: handle "cd.." explicitly
+    else if (!kstrcmp(cmd, "cd.."))
         cmd_cd("..");
-    else if (!kstrncmp(cmd, "cd ", 3))           // existing: normal "cd <path>"
+    else if (!kstrncmp(cmd, "cd ", 3))
         cmd_cd(cmd + 3);
+    else if (!kstrncmp(cmd, "edit ", 5))
+    {
+        const char *name = cmd + 5;
+        while (*name == ' ')
+            name++;
+
+        if (!name[0])
+            console_write("Usage: edit <filename>\n");
+        else
+            editor_start(name);
+    }
     else if (!kstrncmp(cmd, "mkdir ", 6))
     {
         const char *name = cmd + 6;
@@ -494,12 +507,14 @@ static void shell_execute(const char *cmd)
             console_write("Snapshot created.\n");
             log_event("fs: snapshot create");
         }
-        else {
+        else
+        {
             console_write("snap-create: error.\n");
             log_event("fs: snapshot create error");
         }
     }
-    else if (!kstrncmp(cmd, "snap-restore ", 13)) {
+    else if (!kstrncmp(cmd, "snap-restore ", 13))
+    {
         const char *name = cmd + 13;
         while (*name == ' ')
             name++;
@@ -527,6 +542,7 @@ static void shell_execute(const char *cmd)
         const char *name = cmd + 6;
         while (*name == ' ')
             name++;
+
         cmd_login(name);
     }
     else if (!kstrcmp(cmd, "log"))
@@ -537,9 +553,12 @@ static void shell_execute(const char *cmd)
 
         while (*p == ' ')
             p++;
+
         char name[32];
         int i = 0;
-        while (*p && *p != ' ' && i < (int)sizeof(name) - 1) { name[i++] = *p++; }
+
+        while (*p && *p != ' ' && i < (int)sizeof(name) - 1)
+            name[i++] = *p++;
         name[i] = '\0';
 
         while (*p == ' ')
@@ -553,6 +572,7 @@ static void shell_execute(const char *cmd)
 
         if (sec_require_perm(PERM_WRITE, "write file") != 0)
             return;
+
         if (fs_write(name, p) == 0)
         {
             console_write("File written.\n");
@@ -570,6 +590,17 @@ static void shell_execute(const char *cmd)
 
 
 void shell_keypress(char c) {
+    
+    if (editor_is_active()) {
+        int was_active = editor_is_active();
+        editor_handle_key(c);
+        if (was_active && !editor_is_active()) {
+            shell_print_prompt();
+        }
+        return;
+    }
+
+    /* Normal shell command-line handling */
     if (c == '\b')
     {
         if (input_len > 0)
@@ -579,13 +610,18 @@ void shell_keypress(char c) {
         }
         return;
     }
-    if (c == '\n')
+   if (c == '\n')
     {
         console_write("\n");
         input_buffer[input_len] = 0;
+
         shell_execute(input_buffer);
         input_len = 0;
-        shell_print_prompt();
+
+        /* If edit <file> started the editor, do NOT print prompt now */
+        if (!editor_is_active()) {
+            shell_print_prompt();
+        }
         return;
     }
     if (input_len < SHELL_INPUT_MAX - 1)
@@ -595,6 +631,7 @@ void shell_keypress(char c) {
         console_write(s);
     }
 }
+
 
 void shell_init(void) { input_len = 0; }
 

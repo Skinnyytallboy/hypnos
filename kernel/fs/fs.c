@@ -254,6 +254,46 @@ int fs_write(const char* path, const char* data)
 
     return 0;
 }
+/* Simple helper: write file in current directory (no path resolving). */
+int fs_write_cwd(const char* name, const char* data)
+{
+    if (!name || !name[0] || !data)
+        return -1;
+
+    /* Must have a current directory */
+    if (!fs_cwd || !fs_cwd->is_dir)
+        return -1;
+
+    /* See if file already exists in cwd */
+    fs_node_t* node = fs_find_in_dir(fs_cwd, name);
+
+    /* If it doesn't exist, create it in cwd */
+    if (!node) {
+        node = fs_new_node(name, 0);
+        if (!node) return -1;
+        node->parent  = fs_cwd;
+        node->sibling = fs_cwd->child;
+        fs_cwd->child = node;
+    }
+
+    /* If it's a directory, we can't write file data into it */
+    if (node->is_dir)
+        return -1;
+
+    /* Encrypt and store data */
+    size_t len = kstrlen(data);
+
+    char* buf = (char*)kmalloc(len + 1);
+    if (!buf) return -1;
+
+    crypto_encrypt((const uint8_t*)data, (uint8_t*)buf, len);
+    buf[len] = 0;
+
+    node->data = buf;
+    node->size = (uint32_t)len;
+
+    return 0;
+}
 
 
 const char* fs_read(const char* path)
