@@ -53,6 +53,7 @@ static void shell_draw_status_bar(void)
 {
     uint32_t sec        = timer_get_seconds();
     const char* user    = sec_get_current_username();
+    const char* cwd     = fs_getcwd();
 
     char buf[80];
     int pos = 0;
@@ -71,8 +72,14 @@ static void shell_draw_status_bar(void)
     while (*p && pos < 79) buf[pos++] = *p++;
     if (pos < 79) buf[pos++] = 's';
 
-    const char* fsinfo = " | fs: RAM-FS ";
+    const char* fsinfo = " | fs: RAM-FS";
     p = fsinfo;
+    while (*p && pos < 79) buf[pos++] = *p++;
+
+    const char* cwd_label = " | cwd: ";
+    p = cwd_label;
+    while (*p && pos < 79) buf[pos++] = *p++;
+    p = cwd;
     while (*p && pos < 79) buf[pos++] = *p++;
 
     while (pos < 79) buf[pos++] = ' ';
@@ -91,17 +98,21 @@ static void shell_draw_status_bar(void)
     console_set_cursor(old_row, old_col);
 }
 
+
 static void shell_print_prompt(void)
 {
     shell_draw_status_bar();
+    const char* cwd = fs_getcwd(); 
 
     console_set_color(COLOR_LIGHT_GREEN, COLOR_BLACK);
     console_write(sec_get_current_username());
-    console_write("@hypnos ");
-    console_set_color(COLOR_LIGHT_CYAN, COLOR_BLACK);
+    console_write("@hypnos");
+
+    console_set_color(COLOR_MAGENTA, COLOR_BLACK);
+    console_write(cwd);
+    console_set_color(COLOR_LIGHT_GREEN, COLOR_BLACK);
     console_write(">");
     console_set_theme_default();
-    console_write(" ");
 }
 
 #define SHELL_INPUT_MAX 128
@@ -224,11 +235,58 @@ static void cmd_cd(const char *path)
         console_write("Usage: cd <path>\n");
         return;
     }
+
+    /* "cd.." should trigger this, "cd .." should NOT */
+    if (!kstrcmp(path, ".."))
+    {
+        const char *cwd = fs_getcwd();
+        char buf[128];
+
+        int i = 0;
+        while (cwd[i] && i < (int)sizeof(buf) - 1) {
+            buf[i] = cwd[i];
+            i++;
+        }
+        buf[i] = 0;
+
+        /* already at root? stay there */
+        if (buf[0] == '/' && buf[1] == 0) {
+            /* do nothing */
+        } else {
+            /* remove trailing slash */
+            if (i > 1 && buf[i - 1] == '/') {
+                buf[i - 1] = 0;
+                i--;
+            }
+
+            /* remove the last path segment */
+            while (i > 0 && buf[i - 1] != '/') {
+                buf[i - 1] = 0;
+                i--;
+            }
+
+            if (i == 0) {
+                buf[0] = '/';
+                buf[1] = 0;
+            }
+        }
+
+        if (fs_chdir(buf) == 0)
+            cmd_pwd();
+        else
+            console_write("cd: error.\n");
+
+        return;
+    }
+
+    /* normal "cd folder" */
     if (fs_chdir(path) == 0)
         cmd_pwd();
     else
         console_write("cd: no such directory.\n");
 }
+
+
 
 static void cmd_mkdir(const char *name)
 {
@@ -374,7 +432,9 @@ static void shell_execute(const char *cmd)
         cmd_ls();
     else if (!kstrcmp(cmd, "pwd"))
         cmd_pwd();
-    else if (!kstrncmp(cmd, "cd ", 3))
+    else if (!kstrcmp(cmd, "cd.."))              // <-- new: handle "cd.." explicitly
+        cmd_cd("..");
+    else if (!kstrncmp(cmd, "cd ", 3))           // existing: normal "cd <path>"
         cmd_cd(cmd + 3);
     else if (!kstrncmp(cmd, "mkdir ", 6))
     {
@@ -507,6 +567,7 @@ static void shell_execute(const char *cmd)
     else
         console_write("Unknown command. Type 'help'.\n");
 }
+
 
 void shell_keypress(char c) {
     if (c == '\b')
