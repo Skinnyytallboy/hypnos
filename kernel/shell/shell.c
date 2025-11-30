@@ -478,12 +478,8 @@ static void shell_execute(const char *cmd)
         console_write("  whoami/users  - security info\n");
         console_write("  login <user>  - switch user\n");
         console_write("  log           - show audit log\n");
-<<<<<<< HEAD
-        console_write("  tree          - show directory tree\n");
-=======
         console_write("  exit          - shutdown the system\n");
 
->>>>>>> dev/texteditor
     }
     else if (!kstrcmp(cmd, "clear"))
         cmd_clear();
