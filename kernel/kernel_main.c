@@ -111,7 +111,7 @@ static void demo_task(void)
     size_t x = 0;
     while (1) {
         console_set_color(COLOR_GREEN, COLOR_BLACK);
-        char c = 'M';
+        char c = '.';
         console_put_at(c, x, y);
         x++;
         if (x >= VGA_WIDTH) {
@@ -193,16 +193,18 @@ void kernel_main(void)
     sleep_ticks(sleep_timer);
     __asm__ volatile ("sti");
 
-    task_init();
+   task_init();
 
-    console_clear();
-    print_ascii_banner();
-    banner("=== Hypnos kernel booted ===");
-    banner("Starting multitasking demo...");
+console_clear();
+print_ascii_banner();
+banner("=== Hypnos kernel booted ===");
+banner("Starting multitasking demo...");
 
-    task_create(shell_thread, "shell");
+// NOW create tasks
+task_create(shell_thread, "shell");
+task_create(demo_task, "demo");
 
-    task_create(demo_task, "demo");
+// NOW start scheduler
+scheduler_start();
 
-    scheduler_start();
 }

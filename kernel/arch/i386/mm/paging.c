@@ -80,7 +80,7 @@ void paging_enable(void)
     cr0 |= 0x80000000;
     __asm__ volatile("mov %0, %%cr0" :: "r"(cr0));
 
-    console_write("Paging enabled.\n");
+    console_write("Paging enabled.\n\n");
 }
 
 void paging_map(uint32_t vaddr, uint32_t paddr, uint32_t flags)
