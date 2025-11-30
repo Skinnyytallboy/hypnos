@@ -453,13 +453,17 @@ static void shell_execute(const char *cmd)
         console_write("  touch <name>  - create/update file\n");
         console_write("  write f txt   - write text to file\n");
         console_write("  cat <name>    - show file contents\n");
+        console_write("  rm <file>     - remove a file\n");
+        console_write("  rmdir <dir>   - remove an empty directory\n");
+        console_write("  mv <old> <new>- move/rename file or directory\n");
+        console_write("  cp <src> <dst>- copy a file\n");
+        console_write("  find <name>   - search files by name (partial match)\n");
         console_write("  edit <file>   - simple text editor\n");
         console_write("  snap-*        - snapshot commands\n");
         console_write("  whoami/users  - security info\n");
         console_write("  login <user>  - switch user\n");
         console_write("  log           - show audit log\n");
         console_write("  tree          - show directory tree\n");
-        
     }
     else if (!kstrcmp(cmd, "clear"))
         cmd_clear();
@@ -629,8 +633,108 @@ static void shell_execute(const char *cmd)
             log_event("fs: write error");
         }
     }
-    else
-        console_write("Unknown command. Type 'help'.\n");
+    else if (!kstrncmp(cmd, "rm ", 3))
+    {
+        const char *p = cmd + 3;
+        while (*p == ' ') p++;
+        if (!*p) {
+            console_write("Usage: rm <file>\n");
+            return;
+        }
+        if (sec_require_perm(PERM_WRITE, "remove file") != 0)
+            return;
+        if (fs_unlink(p) == 0) {
+            console_write("Removed file.\n");
+            log_event("fs: unlink");
+        } else {
+            console_write("rm: error.\n");
+            log_event("fs: unlink error");
+        }
+    }
+    else if (!kstrncmp(cmd, "rmdir ", 6))
+    {
+        const char *p = cmd + 6;
+        while (*p == ' ') p++;
+        if (!*p) {
+            console_write("Usage: rmdir <dir>\n");
+            return;
+        }
+        if (sec_require_perm(PERM_WRITE, "remove directory") != 0)
+            return;
+        if (fs_rmdir(p) == 0) {
+            console_write("Directory removed.\n");
+            log_event("fs: rmdir");
+        } else {
+            console_write("rmdir: error (non-empty or not found).\n");
+            log_event("fs: rmdir error");
+        }
+    }
+    else if (!kstrncmp(cmd, "mv ", 3))
+    {
+        const char *p = cmd + 3;
+        while (*p == ' ') p++;
+        char a[64], b[64];
+        int i = 0;
+        while (*p && *p != ' ' && i < (int)sizeof(a)-1) a[i++] = *p++;
+        a[i] = 0;
+        while (*p == ' ') p++;
+        i = 0;
+        while (*p && *p != ' ' && i < (int)sizeof(b)-1) b[i++] = *p++;
+        b[i] = 0;
+        if (!a[0] || !b[0]) {
+            console_write("Usage: mv <old> <new>\n");
+            return;
+        }
+        if (sec_require_perm(PERM_WRITE, "rename/move") != 0)
+            return;
+        if (fs_rename(a, b) == 0) {
+            console_write("Renamed/moved.\n");
+            log_event("fs: rename");
+        } else {
+            console_write("mv: error.\n");
+            log_event("fs: rename error");
+        }
+    }
+    else if (!kstrncmp(cmd, "cp ", 3))
+    {
+        const char *p = cmd + 3;
+        while (*p == ' ') p++;
+        char a[64], b[64];
+        int i = 0;
+        while (*p && *p != ' ' && i < (int)sizeof(a)-1) a[i++] = *p++;
+        a[i] = 0;
+        while (*p == ' ') p++;
+        i = 0;
+        while (*p && *p != ' ' && i < (int)sizeof(b)-1) b[i++] = *p++;
+        b[i] = 0;
+        if (!a[0] || !b[0]) {
+            console_write("Usage: cp <src> <dest>\n");
+            return;
+        }
+        if (sec_require_perm(PERM_READ, "copy file") != 0)
+            return;
+        if (fs_copy(a, b) == 0) {
+            console_write("Copied.\n");
+            log_event("fs: copy");
+        } else {
+            console_write("cp: error.\n");
+            log_event("fs: copy error");
+        }
+    }
+    else if (!kstrncmp(cmd, "find ", 5))
+    {
+        const char *p = cmd + 5;
+        while (*p == ' ') p++;
+        if (!*p) {
+            console_write("Usage: find <name>\n");
+            return;
+        }
+        if (fs_find(p) != 0) {
+            console_write("find: error.\n");
+        }
+    }
+     else
+         console_write("Unknown command. Type 'help'.\n");
 }
 
 

@@ -32,3 +32,19 @@ int fs_write_cwd(const char* name, const char* data);
 
 void fs_tree_cwd(fs_tree_cb cb);
 
+
+int fs_unlink(const char *path);
+
+int fs_rmdir(const char *path);
+
+
+int fs_rename(const char *oldpath, const char *newpath);
+
+
+int fs_copy(const char *src, const char *dst);
+
+
+
+ 
+int fs_find(const char *name);
+
