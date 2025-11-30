@@ -16,6 +16,7 @@
 #include "fs/crypto.h"
 #include "log.h"
 #include "security.h"
+#include "syscall.h" 
 
 // void thread1(void)
 // {
@@ -112,7 +113,11 @@ void kernel_main(void)
 
     idt_init();
     ok("IDT initialized.");
-        sleep_ticks(sleep_timer);
+    sleep_ticks(sleep_timer);
+    
+    syscall_init();
+    ok("Syscalls (INT 0x80) initialized.");
+    sleep_ticks(sleep_timer);
 
     paging_init();
     paging_enable();

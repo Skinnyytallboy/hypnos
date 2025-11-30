@@ -35,13 +35,18 @@ OBJS := \
 	$(BUILD)/security.o \
 	$(BUILD)/user_mode.o \
 	$(BUILD)/user_program.o \
-    $(BUILD)/log.o
+    $(BUILD)/log.o \
+	 $(BUILD)/syscall.o  
 # 	$(BUILD)/map_user_pages.o \
 
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+$(BUILD)/syscall.o: kernel/syscall.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 # $(BUILD)/map_user_pages.o: kernel/user/map_user_pages.c
 # 	@mkdir -p $(BUILD)
