@@ -60,31 +60,44 @@ ISR 31
 isr80_syscall:
     cli
 
-    # Save segment registers
+    # Save user segment registers
     push %ds
     push %es
     push %fs
     push %gs
 
-    # Preserve EAX (syscall number) while we load kernel data selector
-    push %eax
-    mov $0x10, %ax         # kernel data selector
+    # Switch to kernel data segment (0x10)
+    mov $0x10, %ax
     mov %ax, %ds
     mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
-    pop %eax               # restore syscall number
 
-    # Push args: syscall_handler(eax, ebx, ecx, edx)
+    # Preserve callee-saved registers for user code
+    # (cdecl: ebx, esi, edi, ebp must be preserved by caller)
+    push %ebp
+    push %ebx
+    push %esi
+    push %edi
+
+    # Build arguments for syscall_handler(num, a1, a2, a3)
+    # num = eax, a1 = ebx, a2 = ecx, a3 = edx
     push %edx
     push %ecx
     push %ebx
     push %eax
     call syscall_handler
-    add $16, %esp          # pop 4 args
+    add $16, %esp        # pop a3, a2, a1, num
 
-    # return value already in eax
+    # eax now holds return value for user
 
+    # Restore user callee-saved registers
+    pop %edi
+    pop %esi
+    pop %ebx
+    pop %ebp
+
+    # Restore user segments
     pop %gs
     pop %fs
     pop %es

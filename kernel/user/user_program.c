@@ -1,12 +1,45 @@
 #include <stdint.h>
 #include "user/syscall.h"
 
+static void u_itoa(uint32_t v, char *out)
+{
+    char tmp[16];
+    int i = 0;
+
+    if (v == 0) {
+        out[0] = '0';
+        out[1] = 0;
+        return;
+    }
+
+    while (v && i < 15) {
+        tmp[i++] = '0' + (v % 10);
+        v /= 10;
+    }
+
+    int j = 0;
+    while (i > 0) {
+        out[j++] = tmp[--i];
+    }
+    out[j] = 0;
+}
+
 void user_program_main(void)
 {
-    sys_puts("\n[USER] Hello from Ring 3 via syscall!!\n");
-    sys_puts("[USER] This string is printed with INT 0x80.\n");
+    sys_puts("\n[USER] Hello from Ring 3 via syscall!!!\n");
 
+    uint32_t ticks = sys_get_ticks();
+    char buf[32];
+    u_itoa(ticks, buf);
+
+    sys_puts("[USER] Kernel says ticks = ");
+    sys_puts(buf);
+    sys_puts("\n");
+
+    /* For now, just spin in user mode.
+       Later we'll add SYS_EXIT or scheduling to return to shell. */
     while (1) {
+        __asm__ volatile("hlt");
     }
 }
 
