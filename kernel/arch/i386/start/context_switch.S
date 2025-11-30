@@ -1,51 +1,30 @@
 .global start_task
 .global switch_task
 
-# void start_task(uint32_t new_esp, uint32_t new_ebp, uint32_t new_eip);
-# Does not return; jumps directly into the first task.
+# void start_task(uint32_t esp, uint32_t eip);
 start_task:
-    # args are on the stack:
-    # [esp+0] return address
-    # [esp+4] new_esp
-    # [esp+8] new_ebp
-    # [esp+12] new_eip
+    # [esp+4] = esp, [esp+8] = eip
+    mov 4(%esp), %eax       # new esp
+    mov 8(%esp), %ebx       # new eip
+    mov %eax, %esp
+    jmp *%ebx               
 
-    mov 4(%esp), %eax      # new_esp
-    mov 8(%esp), %ebx      # new_ebp
-    mov 12(%esp), %ecx     # new_eip
-
-    mov %eax, %esp         # switch stack
-    mov %ebx, %ebp         # switch base pointer
-    jmp *%ecx              # jump to first task
-
-
-# void switch_task(uint32_t* old_esp, uint32_t* old_ebp, uint32_t* old_eip,
-#                  uint32_t  new_esp,  uint32_t  new_ebp,  uint32_t  new_eip);
+# void switch_task(cpu_state_t *old, cpu_state_t *new);
+# struct cpu_state { uint32_t esp; uint32_t ebp; uint32_t eip; };
 switch_task:
-    # Layout:
-    # [esp+0]  return address
-    # [esp+4]  &old_esp
-    # [esp+8]  &old_ebp
-    # [esp+12] &old_eip
-    # [esp+16] new_esp
-    # [esp+20] new_ebp
-    # [esp+24] new_eip
+    # [esp+4] = old
+    # [esp+8] = new
 
-    # Load all arguments into registers first
-    mov 4(%esp), %eax      # &old_esp
-    mov 8(%esp), %edx      # &old_ebp
-    mov 12(%esp), %ecx     # &old_eip
-    mov 16(%esp), %esi     # new_esp
-    mov 20(%esp), %edi     # new_ebp
-    mov 24(%esp), %ebx     # new_eip
+    # save caller's context into *old
+    mov 4(%esp), %eax       # eax = old
+    mov %esp, 0(%eax)       # old->esp = current esp
+    mov %ebp, 4(%eax)       # old->ebp = current ebp
+    mov 0(%esp), %ecx       # return address (old EIP)
+    mov %ecx, 8(%eax)       # old->eip = ret addr
 
-    # Save old ESP / EBP / EIP into old_* locations
-    mov %esp, (%eax)       # *old_esp = current esp
-    mov %ebp, (%edx)       # *old_ebp = current ebp
-    mov 0(%esp), %eax      # return address = old EIP
-    mov %eax, (%ecx)       # *old_eip = return address
-
-    # Load new context
-    mov %esi, %esp         # esp = new_esp
-    mov %edi, %ebp         # ebp = new_ebp
-    jmp *%ebx              # jump to new_eip
+    # load *new into registers and jump
+    mov 8(%esp), %edx       # edx = new
+    mov 0(%edx), %esp       # esp = new->esp
+    mov 4(%edx), %ebp       # ebp = new->ebp
+    mov 8(%edx), %ecx       # ecx = new->eip
+    jmp *%ecx

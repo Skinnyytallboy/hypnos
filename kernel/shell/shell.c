@@ -637,15 +637,14 @@ void shell_keypress(char c) {
     }
 }
 
-void shell_tick(void)
-{
-    /* Called from timer IRQ: keep this light. */
-    uint32_t sec = timer_get_seconds();
-    if (sec == last_bar_second)
-        return;             // already up to date for this second
+void shell_tick(void) {
+    static int counter = 0;
 
-    last_bar_second = sec;
-    shell_draw_status_bar();
+    counter++;
+    if (counter >= 100) {
+        counter = 0;
+        shell_draw_status_bar();
+    }
 }
 
 void shell_init(void) { input_len = 0; }
@@ -653,8 +652,11 @@ void shell_init(void) { input_len = 0; }
 void shell_run(void)
 {
     shell_print_prompt();
+
     for (;;) {
+        /* sleep until any interrupt (timer / keyboard) */
         __asm__ volatile("hlt");
-        /* no scheduler here yet */
+        /* give other tasks a chance to run */
+        task_yield();
     }
 }

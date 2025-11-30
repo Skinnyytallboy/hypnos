@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include "timer.h"
+#include "sched/task.h"
 #include "arch/i386/cpu/irq.h"
 
 static inline void outb(uint16_t port, uint8_t value) {
@@ -27,6 +29,7 @@ static void timer_callback(void)
 
     /* Notify shell once per tick; shell_tick() will throttle itself */
     shell_tick();
+    // task_yield();
 }
 
 void timer_install(void)

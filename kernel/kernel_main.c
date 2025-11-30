@@ -99,23 +99,31 @@ static void loading_animation(const char* msg)
 extern void shell_init(void);
 extern void shell_run(void);
 
-static void kshell_task(void)
+static void shell_thread(void)
 {
     shell_init();
-    shell_run();
+    shell_run();   // never returns
 }
 
 static void demo_task(void)
 {
-    for (;;) {
-        uint32_t start = timer_get_ticks();
-        while ((uint32_t)(timer_get_ticks() - start) < 50) {
-            __asm__ volatile ("hlt");
+    size_t y = 10;
+    size_t x = 0;
+    while (1) {
+        console_set_color(COLOR_GREEN, COLOR_BLACK);
+        char c = 'M';
+        console_put_at(c, x, y);
+        x++;
+        if (x >= VGA_WIDTH) {
+            x = 0;
+            for (size_t i = 0; i < VGA_WIDTH; i++)
+                console_put_at(' ', i, y);
         }
-        console_write("M");
-        task_yield_if_needed();
+        console_set_theme_default();
+        task_yield();
     }
 }
+
 
 void kernel_main(void)
 {
@@ -185,21 +193,16 @@ void kernel_main(void)
     sleep_ticks(sleep_timer);
     __asm__ volatile ("sti");
 
+    task_init();
+
     console_clear();
     print_ascii_banner();
     banner("=== Hypnos kernel booted ===");
+    banner("Starting multitasking demo...");
 
-    banner("Starting multitasking...");
-    tasking_init();
+    task_create(shell_thread, "shell");
 
-    if (task_create(kshell_task) < 0) {
-        console_write("Failed to create shell task.\n");
-    }
+    task_create(demo_task, "demo");
 
-    banner("Starting first task (shell)...");
-    task_start_first();
-
-    for (;;) {
-        __asm__ volatile ("hlt");
-    }
+    scheduler_start();
 }
