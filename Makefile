@@ -137,7 +137,11 @@ iso: $(BUILD)/$(TARGET) boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) $(ISODIR)
 
 run: iso
-	qemu-system-i386 -cdrom $(ISO) -m 256
+	qemu-system-i386 -cdrom $(ISO) -m 256 \
+		-m 256 \
+		-no-reboot \
+		-device isa-debug-exit,iobase=0xf4,iosize=0x04
+
 
 run-gtk: iso
 	qemu-system-i386 -cdrom $(ISO) -m 256 -display gtk -no-reboot -no-shutdown

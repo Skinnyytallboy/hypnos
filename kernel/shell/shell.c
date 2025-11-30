@@ -385,6 +385,21 @@ static void cmd_panic(void)
     int x = 1 / zero;
     (void)x;
 }
+static void cmd_exit(void)
+{
+    console_write("Shutting down Hypnos...\n");
+
+    __asm__ volatile ("cli");
+
+    // Tell QEMU to exit via isa-debug-exit on port 0xF4
+    uint32_t code = 0;   // exit status (low bits)
+    __asm__ volatile ("out %0, %1" : : "a"(code), "Nd"((uint16_t)0xF4));
+
+    // If QEMU for some reason is still running, just halt forever.
+    for (;;) {
+        __asm__ volatile ("hlt");
+    }
+}
 
 /* split "cmd arg" into arg (returns pointer inside original string or NULL) */
 static const char *skip_word(const char *s)
@@ -421,6 +436,8 @@ static void shell_execute(const char *cmd)
         console_write("  whoami/users  - security info\n");
         console_write("  login <user>  - switch user\n");
         console_write("  log           - show audit log\n");
+        console_write("  exit          - shutdown the system\n");
+
     }
     else if (!kstrcmp(cmd, "clear"))
         cmd_clear();
@@ -428,8 +445,10 @@ static void shell_execute(const char *cmd)
         cmd_uptime();
     else if (!kstrncmp(cmd, "echo ", 5))
         cmd_echo(cmd + 5);
-    else if (!kstrcmp(cmd, "panic"))
-        cmd_panic();
+   else if (!kstrcmp(cmd, "panic"))
+    cmd_panic();
+   else if (!kstrcmp(cmd, "exit"))
+    cmd_exit();
     else if (!kstrcmp(cmd, "ls"))
         cmd_ls();
     else if (!kstrcmp(cmd, "pwd"))
