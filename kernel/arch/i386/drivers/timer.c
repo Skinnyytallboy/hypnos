@@ -34,7 +34,7 @@ static void timer_callback(void)
 
 void timer_install(void)
 {
-    uint32_t freq    = 100;
+    uint32_t freq    = 10;
     uint32_t divisor = 1193180 / freq;
 
     outb(0x43, 0x36);

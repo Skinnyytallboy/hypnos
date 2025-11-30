@@ -36,23 +36,34 @@ task_t *task_create(void (*entry)(void), const char *name)
 {
     const uint32_t STACK_SIZE = 4096;
 
-    task_t *t = (task_t*)kmalloc(sizeof(task_t));
-    if (!t) {
-        console_write("task_create: kmalloc task failed\n");
-        return 0;
-    }
+    task_t *t = kmalloc(sizeof(task_t));
+    if (!t) return 0;
 
-    uint8_t *stack = (uint8_t*)kmalloc(STACK_SIZE);
-    if (!stack) {
-        console_write("task_create: kmalloc stack failed\n");
-        return 0;
-    }
+    uint8_t *stack = kmalloc(STACK_SIZE);
+    if (!stack) return 0;
 
     uint32_t top = (uint32_t)stack + STACK_SIZE;
 
-    t->regs.esp = top;
-    t->regs.ebp = top;
-    t->regs.eip = (uint32_t)entry;
+    // Clear context
+    for (int i=0;i<sizeof(cpu_state_t)/4;i++)
+        ((uint32_t*)&t->regs)[i] = 0;
+
+    
+    t->regs.eip    = (uint32_t)entry;
+    t->regs.esp    = top;
+    t->regs.ebp    = top;
+    t->regs.eflags = 0x202;
+
+    
+    t->regs.cs = 0x08;
+    t->regs.ds = 0x10;
+    t->regs.es = 0x10;
+    t->regs.fs = 0x10;
+    t->regs.gs = 0x10;
+    t->regs.ss = 0x10;
+
+    t->stack_base = stack;
+    t->stack_size = STACK_SIZE;
 
     t->name = name;
     t->id   = next_id++;
@@ -68,9 +79,8 @@ task_t *task_create(void (*entry)(void), const char *name)
 
 void task_yield(void)
 {
-    if (!current || current->next == current) {
+    if (!current || current->next == current)
         return;
-    }
 
     task_t *old = current;
     task_t *new = current->next;
@@ -78,8 +88,6 @@ void task_yield(void)
 
     __asm__ volatile("cli");
     switch_task(&old->regs, &new->regs);
-    console_write("Returned to task: ");
-    console_write(current->name);
     __asm__ volatile("sti");
 }
 
@@ -87,7 +95,7 @@ void scheduler_start(void)
 {
     if (!task_head) {
         console_write("scheduler_start: no tasks!\n");
-        for (;;) __asm__ volatile("hlt");
+        for (;;) __asm__("hlt");
     }
 
     current = task_head;
@@ -99,5 +107,5 @@ void scheduler_start(void)
     start_task(current->regs.esp, current->regs.eip);
 
     console_write("scheduler_start: returned unexpectedly!\n");
-    for (;;) __asm__ volatile("hlt");
+    for (;;) __asm__("hlt");
 }
