@@ -10,7 +10,16 @@
 #include "arch/i386/drivers/timer.h"
 
 extern void switch_to_user_mode(void);
+extern volatile uint32_t timer_ticks;
+
 static uint32_t last_bar_second = 0;
+
+#define SHELL_INPUT_MAX 128
+
+static char   input_buffer[SHELL_INPUT_MAX];
+static size_t input_len = 0;
+
+/* ---------------- small helpers ---------------- */
 
 static void ui_itoa(uint32_t v, char* out) {
     char tmp[16];
@@ -53,6 +62,8 @@ static int kstrncmp(const char *a, const char *b, size_t n)
         return 0;
     return (unsigned char)*a - (unsigned char)*b;
 }
+
+/* ---------------- status bar ---------------- */
 
 static void shell_draw_status_bar(void)
 {
@@ -103,6 +114,7 @@ static void shell_draw_status_bar(void)
     console_set_cursor(old_row, old_col);
 }
 
+/* ---------------- prompt ---------------- */
 
 static void shell_print_prompt(void)
 {
@@ -120,14 +132,7 @@ static void shell_print_prompt(void)
     console_set_theme_default();
 }
 
-#define SHELL_INPUT_MAX 128
-
-static char   input_buffer[SHELL_INPUT_MAX];
-static size_t input_len = 0;
-
-extern volatile uint32_t timer_ticks;
-
-static void shell_execute(const char *cmd);
+/* ---------------- command helpers ---------------- */
 
 static void ls_printer(const char *name, int is_dir)
 {
@@ -291,8 +296,6 @@ static void cmd_cd(const char *path)
         console_write("cd: no such directory.\n");
 }
 
-
-
 static void cmd_mkdir(const char *name)
 {
     if (!name || !name[0])
@@ -372,7 +375,6 @@ static void cmd_uptime(void)
     console_write("\n");
 }
 
-
 static void cmd_echo(const char *msg)
 {
     console_write(msg);
@@ -387,20 +389,16 @@ static void cmd_panic(void)
     (void)x;
 }
 
-/* split "cmd arg" into arg (returns pointer inside original string or NULL) */
-static const char *skip_word(const char *s)
-{
-    while (*s && *s != ' ')
-        s++;
-    while (*s == ' ')
-        s++;
-    return s;
-}
+/* ---------------- command dispatcher ---------------- */
 
 static void shell_execute(const char *cmd)
 {
     if (cmd[0] == 0)
         return;
+
+    /* simple logging of commands: two entries */
+    log_event("[SHELL] command");
+    log_event(cmd);
 
     if (!kstrcmp(cmd, "help"))
     {
@@ -474,6 +472,7 @@ static void shell_execute(const char *cmd)
         cmd_touch(cmd + 6);
     else if (!kstrcmp(cmd, "runuser")) {
         console_write("Launching first user program in Ring 3...\n");
+        log_event("[SHELL] runuser invoked.");
         switch_to_user_mode();
     }
     else if (!kstrncmp(cmd, "cat ", 4))
@@ -549,6 +548,7 @@ static void shell_execute(const char *cmd)
             name++;
 
         cmd_login(name);
+        log_event("security: login");
     }
     else if (!kstrcmp(cmd, "log"))
         cmd_log_show();
@@ -593,6 +593,7 @@ static void shell_execute(const char *cmd)
         console_write("Unknown command. Type 'help'.\n");
 }
 
+/* ---------------- input handling / main loop ---------------- */
 
 void shell_keypress(char c) {
     
@@ -615,7 +616,7 @@ void shell_keypress(char c) {
         }
         return;
     }
-   if (c == '\n')
+    if (c == '\n')
     {
         console_write("\n");
         input_buffer[input_len] = 0;
@@ -647,10 +648,14 @@ void shell_tick(void) {
     }
 }
 
-void shell_init(void) { input_len = 0; }
+void shell_init(void) {
+    input_len = 0;
+    log_event("[SHELL] shell_init");
+}
 
 void shell_run(void)
 {
+    log_event("[SHELL] shell_run loop starting.");
     shell_print_prompt();
 
     for (;;) {

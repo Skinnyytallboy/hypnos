@@ -1,6 +1,7 @@
 #include "log.h"
 #include "console.h"
 #include <stdint.h>
+#include "arch/i386/drivers/debugcon.h"   // <— ADD THIS
 
 #define LOG_MAX_LINES 128
 #define LOG_LINE_LEN  80
@@ -29,14 +30,21 @@ void log_init(void)
 {
     log_head = 0;
     log_count = 0;
+    // optional: log_event("log_init");
 }
 
 void log_event(const char* msg)
 {
     if (!msg) return;
+
+    // Save in ring buffer for in-kernel dump
     l_strncpy(log_buf[log_head], msg, LOG_LINE_LEN);
     log_head = (log_head + 1) % LOG_MAX_LINES;
     if (log_count < LOG_MAX_LINES) log_count++;
+
+    // Also send to QEMU debugcon so it gets written to logs/all.log
+    debugcon_write(msg);
+    debugcon_write("\n");
 }
 
 void log_dump(void)
