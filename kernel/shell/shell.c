@@ -5,10 +5,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "console.h"
+#include "sched/task.h"
 #include "arch/i386/drivers/keyboard.h"
 #include "arch/i386/drivers/timer.h"
 
 extern void switch_to_user_mode(void);
+static uint32_t last_bar_second = 0;
 
 static void ui_itoa(uint32_t v, char* out) {
     char tmp[16];
@@ -347,19 +349,15 @@ static void cmd_clear(void) { console_clear(); }
 static void cmd_uptime(void)
 {
     char buf[64];
-    uint32_t ticks = timer_ticks;
+    uint32_t ticks = timer_get_ticks();
 
     int len = 0;
     uint32_t t = ticks;
     char tmp[32];
-    if (t == 0)
-    {
+    if (t == 0) {
         tmp[len++] = '0';
-    }
-    else
-    {
-        while (t > 0)
-        {
+    } else {
+        while (t > 0) {
             tmp[len++] = '0' + (t % 10);
             t /= 10;
         }
@@ -373,6 +371,7 @@ static void cmd_uptime(void)
     console_write(buf);
     console_write("\n");
 }
+
 
 static void cmd_echo(const char *msg)
 {
@@ -638,11 +637,24 @@ void shell_keypress(char c) {
     }
 }
 
+void shell_tick(void)
+{
+    /* Called from timer IRQ: keep this light. */
+    uint32_t sec = timer_get_seconds();
+    if (sec == last_bar_second)
+        return;             // already up to date for this second
+
+    last_bar_second = sec;
+    shell_draw_status_bar();
+}
 
 void shell_init(void) { input_len = 0; }
 
 void shell_run(void)
 {
     shell_print_prompt();
-    for (;;) __asm__ volatile("hlt");
+    for (;;) {
+        __asm__ volatile("hlt");
+        /* no scheduler here yet */
+    }
 }

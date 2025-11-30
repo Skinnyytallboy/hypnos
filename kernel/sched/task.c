@@ -1,97 +1,141 @@
-#include "task.h"
+// kernel/sched/task.c
+#include "sched/task.h"
 #include "arch/i386/mm/kmalloc.h"
 #include "console.h"
 
 extern void start_task(uint32_t new_esp, uint32_t new_ebp, uint32_t new_eip);
-extern void switch_task(uint32_t*, uint32_t*, uint32_t*,
-                        uint32_t,  uint32_t,  uint32_t);
+extern void switch_task(uint32_t *old_esp, uint32_t *old_ebp, uint32_t *old_eip,
+                        uint32_t  new_esp, uint32_t  new_ebp, uint32_t  new_eip);
 
-static task_t* current_task = 0;
-static task_t* task_list = 0;
-static uint32_t next_pid = 1;
+#define MAX_TASKS        16
+#define TASK_STACK_SIZE  4096
 
-/* All threads start here */
-static void task_wrapper(void (*func)(void))
+static task_t tasks[MAX_TASKS];
+static task_t *current    = 0;
+static int     current_id = -1;
+
+/* set by timer IRQ, consumed by tasks via task_yield_if_needed() */
+static volatile int need_resched = 0;
+
+void scheduler_tick(void)
 {
-    func();  // run the actual thread body
+    need_resched = 1;
+}
 
-    console_write("\n[thread finished]\n");
-    while (1) {
-        task_yield();  // never return into invalid EIP
-    }
+task_t *task_current(void)
+{
+    return current;
 }
 
 void tasking_init(void)
 {
-    console_write("Initializing tasking...\n");
-    current_task = 0;
-    task_list = 0;
-    next_pid = 1;
-    console_write("Tasking initialized.\n");
+    for (int i = 0; i < MAX_TASKS; i++) {
+        tasks[i].active     = 0;
+        tasks[i].stack_base = 0;
+        tasks[i].esp        = 0;
+        tasks[i].ebp        = 0;
+        tasks[i].eip        = 0;
+        tasks[i].id         = i;
+    }
+    current    = 0;
+    current_id = -1;
 }
 
-void task_create(void (*func)(void))
+/* round-robin: find next active task after current_id */
+static int pick_next_id(void)
 {
-    console_write("Creating new kernel thread...\n");
-
-    task_t* new_task = (task_t*) kmalloc(sizeof(task_t));
-    new_task->id = next_pid++;
-
-    uint32_t* stack = kmalloc(4096);   // 4KB stack
-    new_task->stack = stack;
-
-    uint32_t esp = (uint32_t)stack + 4096;
-
-    /*
-     * Build a fake stack frame for:
-     *   task_wrapper(func);
-     *
-     * Layout we want at entry to task_wrapper:
-     *   [esp+0] = fake return address (0)
-     *   [esp+4] = func (argument)
-     */
-
-    esp -= 4;
-    *(uint32_t*)esp = (uint32_t)func;   // argument
-
-    esp -= 4;
-    *(uint32_t*)esp = 0;                // fake return address
-
-    new_task->eip = (uint32_t)task_wrapper;
-    new_task->esp = esp;
-    new_task->ebp = esp;
-
-    if (!task_list) {
-        task_list = new_task;
-        new_task->next = new_task;      // circular list
-    } else {
-        new_task->next = task_list->next;
-        task_list->next = new_task;
+    if (current_id < 0) {
+        /* pick first active task */
+        for (int i = 0; i < MAX_TASKS; i++)
+            if (tasks[i].active)
+                return i;
+        return -1;
     }
+
+    int start = current_id;
+    int i     = (start + 1) % MAX_TASKS;
+
+    while (i != start) {
+        if (tasks[i].active)
+            return i;
+        i = (i + 1) % MAX_TASKS;
+    }
+
+    /* maybe only one active task */
+    if (tasks[start].active)
+        return start;
+
+    return -1;
 }
 
-void task_start(void)
+int task_create(void (*entry)(void))
 {
-    if (!task_list) {
-        console_write("task_start: no tasks to run.\n");
-        return;
+    int idx = -1;
+    for (int i = 0; i < MAX_TASKS; i++) {
+        if (!tasks[i].active) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx < 0)
+        return -1;
+
+    uint8_t *stack = (uint8_t *)kmalloc(TASK_STACK_SIZE);
+    if (!stack)
+        return -1;
+
+    uint32_t top = (uint32_t)stack + TASK_STACK_SIZE;
+
+    tasks[idx].stack_base = stack;
+    tasks[idx].esp        = top;
+    tasks[idx].ebp        = top;
+    tasks[idx].eip        = (uint32_t)entry;
+    tasks[idx].active     = 1;
+
+    if (!current) {
+        current    = &tasks[idx];
+        current_id = idx;
     }
 
-    current_task = task_list;
-    console_write("Starting first task...\n");
-    start_task(current_task->esp, current_task->ebp, current_task->eip);
+    return idx;
+}
 
-    // never returns
+void task_start_first(void)
+{
+    int id = pick_next_id();
+    if (id < 0) {
+        console_write("task_start_first: no runnable tasks!\n");
+        for (;;) __asm__ volatile ("hlt");
+    }
+
+    current    = &tasks[id];
+    current_id = id;
+
+    start_task(current->esp, current->ebp, current->eip);
+    /* never returns */
 }
 
 void task_yield(void)
 {
-    if (!current_task) return;
+    int next_id = pick_next_id();
+    if (next_id < 0 || next_id == current_id)
+        return;
 
-    task_t* prev = current_task;
-    task_t* next = current_task->next;
-    current_task = next;
+    task_t *old = current;
+    task_t *new = &tasks[next_id];
 
-    switch_task(&prev->esp, &prev->ebp, &prev->eip,
-                next->esp,  next->ebp,  next->eip);
+    current    = new;
+    current_id = next_id;
+
+    switch_task(&old->esp, &old->ebp, &old->eip,
+                new->esp,  new->ebp,  new->eip);
+    /* returns in context of 'new' later */
+}
+
+void task_yield_if_needed(void)
+{
+    if (need_resched) {
+        need_resched = 0;
+        task_yield();
+    }
 }
