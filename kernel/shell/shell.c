@@ -1,6 +1,7 @@
 #include "fs/fs.h"
 #include "security.h"
 #include "log.h"
+#include "editor.h"
 #include <stddef.h>
 #include <stdint.h>
 #include "console.h"
@@ -55,6 +56,7 @@ static void shell_draw_status_bar(void)
 {
     uint32_t sec        = timer_get_seconds();
     const char* user    = sec_get_current_username();
+    const char* cwd     = fs_getcwd();
 
     char buf[80];
     int pos = 0;
@@ -73,8 +75,14 @@ static void shell_draw_status_bar(void)
     while (*p && pos < 79) buf[pos++] = *p++;
     if (pos < 79) buf[pos++] = 's';
 
-    const char* fsinfo = " | fs: RAM-FS ";
+    const char* fsinfo = " | fs: RAM-FS";
     p = fsinfo;
+    while (*p && pos < 79) buf[pos++] = *p++;
+
+    const char* cwd_label = " | cwd: ";
+    p = cwd_label;
+    while (*p && pos < 79) buf[pos++] = *p++;
+    p = cwd;
     while (*p && pos < 79) buf[pos++] = *p++;
 
     while (pos < 79) buf[pos++] = ' ';
@@ -93,17 +101,21 @@ static void shell_draw_status_bar(void)
     console_set_cursor(old_row, old_col);
 }
 
+
 static void shell_print_prompt(void)
 {
     shell_draw_status_bar();
+    const char* cwd = fs_getcwd(); 
 
     console_set_color(COLOR_LIGHT_GREEN, COLOR_BLACK);
     console_write(sec_get_current_username());
-    console_write("@hypnos ");
-    console_set_color(COLOR_LIGHT_CYAN, COLOR_BLACK);
+    console_write("@hypnos");
+
+    console_set_color(COLOR_MAGENTA, COLOR_BLACK);
+    console_write(cwd);
+    console_set_color(COLOR_LIGHT_GREEN, COLOR_BLACK);
     console_write(">");
     console_set_theme_default();
-    console_write(" ");
 }
 
 #define SHELL_INPUT_MAX 128
@@ -226,11 +238,58 @@ static void cmd_cd(const char *path)
         console_write("Usage: cd <path>\n");
         return;
     }
+
+    /* "cd.." should trigger this, "cd .." should NOT */
+    if (!kstrcmp(path, ".."))
+    {
+        const char *cwd = fs_getcwd();
+        char buf[128];
+
+        int i = 0;
+        while (cwd[i] && i < (int)sizeof(buf) - 1) {
+            buf[i] = cwd[i];
+            i++;
+        }
+        buf[i] = 0;
+
+        /* already at root? stay there */
+        if (buf[0] == '/' && buf[1] == 0) {
+            /* do nothing */
+        } else {
+            /* remove trailing slash */
+            if (i > 1 && buf[i - 1] == '/') {
+                buf[i - 1] = 0;
+                i--;
+            }
+
+            /* remove the last path segment */
+            while (i > 0 && buf[i - 1] != '/') {
+                buf[i - 1] = 0;
+                i--;
+            }
+
+            if (i == 0) {
+                buf[0] = '/';
+                buf[1] = 0;
+            }
+        }
+
+        if (fs_chdir(buf) == 0)
+            cmd_pwd();
+        else
+            console_write("cd: error.\n");
+
+        return;
+    }
+
+    /* normal "cd folder" */
     if (fs_chdir(path) == 0)
         cmd_pwd();
     else
         console_write("cd: no such directory.\n");
 }
+
+
 
 static void cmd_mkdir(const char *name)
 {
@@ -359,6 +418,7 @@ static void shell_execute(const char *cmd)
         console_write("  touch <name>  - create/update file\n");
         console_write("  write f txt   - write text to file\n");
         console_write("  cat <name>    - show file contents\n");
+        console_write("  edit <file>   - simple text editor\n");
         console_write("  snap-*        - snapshot commands\n");
         console_write("  whoami/users  - security info\n");
         console_write("  login <user>  - switch user\n");
@@ -376,8 +436,21 @@ static void shell_execute(const char *cmd)
         cmd_ls();
     else if (!kstrcmp(cmd, "pwd"))
         cmd_pwd();
+    else if (!kstrcmp(cmd, "cd.."))
+        cmd_cd("..");
     else if (!kstrncmp(cmd, "cd ", 3))
         cmd_cd(cmd + 3);
+    else if (!kstrncmp(cmd, "edit ", 5))
+    {
+        const char *name = cmd + 5;
+        while (*name == ' ')
+            name++;
+
+        if (!name[0])
+            console_write("Usage: edit <filename>\n");
+        else
+            editor_start(name);
+    }
     else if (!kstrncmp(cmd, "mkdir ", 6))
     {
         const char *name = cmd + 6;
@@ -440,12 +513,14 @@ static void shell_execute(const char *cmd)
             console_write("Snapshot created.\n");
             log_event("fs: snapshot create");
         }
-        else {
+        else
+        {
             console_write("snap-create: error.\n");
             log_event("fs: snapshot create error");
         }
     }
-    else if (!kstrncmp(cmd, "snap-restore ", 13)) {
+    else if (!kstrncmp(cmd, "snap-restore ", 13))
+    {
         const char *name = cmd + 13;
         while (*name == ' ')
             name++;
@@ -473,6 +548,7 @@ static void shell_execute(const char *cmd)
         const char *name = cmd + 6;
         while (*name == ' ')
             name++;
+
         cmd_login(name);
     }
     else if (!kstrcmp(cmd, "log"))
@@ -483,9 +559,12 @@ static void shell_execute(const char *cmd)
 
         while (*p == ' ')
             p++;
+
         char name[32];
         int i = 0;
-        while (*p && *p != ' ' && i < (int)sizeof(name) - 1) { name[i++] = *p++; }
+
+        while (*p && *p != ' ' && i < (int)sizeof(name) - 1)
+            name[i++] = *p++;
         name[i] = '\0';
 
         while (*p == ' ')
@@ -499,6 +578,7 @@ static void shell_execute(const char *cmd)
 
         if (sec_require_perm(PERM_WRITE, "write file") != 0)
             return;
+
         if (fs_write(name, p) == 0)
         {
             console_write("File written.\n");
@@ -514,7 +594,19 @@ static void shell_execute(const char *cmd)
         console_write("Unknown command. Type 'help'.\n");
 }
 
+
 void shell_keypress(char c) {
+    
+    if (editor_is_active()) {
+        int was_active = editor_is_active();
+        editor_handle_key(c);
+        if (was_active && !editor_is_active()) {
+            shell_print_prompt();
+        }
+        return;
+    }
+
+    /* Normal shell command-line handling */
     if (c == '\b')
     {
         if (input_len > 0)
@@ -524,13 +616,18 @@ void shell_keypress(char c) {
         }
         return;
     }
-    if (c == '\n')
+   if (c == '\n')
     {
         console_write("\n");
         input_buffer[input_len] = 0;
+
         shell_execute(input_buffer);
         input_len = 0;
-        shell_print_prompt();
+
+        /* If edit <file> started the editor, do NOT print prompt now */
+        if (!editor_is_active()) {
+            shell_print_prompt();
+        }
         return;
     }
     if (input_len < SHELL_INPUT_MAX - 1)
@@ -540,6 +637,7 @@ void shell_keypress(char c) {
         console_write(s);
     }
 }
+
 
 void shell_init(void) { input_len = 0; }
 

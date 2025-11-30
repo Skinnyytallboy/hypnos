@@ -30,6 +30,7 @@ OBJS := \
 	$(BUILD)/fs.o \
 	$(BUILD)/task.o \
 	$(BUILD)/shell.o \
+	$(BUILD)/editor.o \
 	$(BUILD)/kernel_main.o \
 	$(BUILD)/security.o \
 	$(BUILD)/user_mode.o \
@@ -135,6 +136,10 @@ $(BUILD)/task.o: kernel/sched/task.c
 	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/shell.o: kernel/shell/shell.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/editor.o: kernel/shell/editor.c
 	@mkdir -p $(BUILD)
 	$(CC32) $(CFLAGS) -c $< -o $@
 

@@ -25,3 +25,6 @@ typedef void (*fs_snap_list_cb)(const char* name);
 int  fs_snap_create(const char* name);      /* 0 = ok, -1 error */
 int  fs_snap_restore(const char* name);     /* restores root + cwd */
 void fs_snap_list(fs_snap_list_cb cb);
+
+int fs_write_cwd(const char* name, const char* data);
+
