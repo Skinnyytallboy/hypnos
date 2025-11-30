@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 typedef struct fs_node fs_node_t;
+typedef void (*fs_tree_cb)(const char* name, int is_dir, int depth);
 
 void fs_init(void);
 
@@ -27,4 +28,7 @@ int  fs_snap_restore(const char* name);     /* restores root + cwd */
 void fs_snap_list(fs_snap_list_cb cb);
 
 int fs_write_cwd(const char* name, const char* data);
+
+
+void fs_tree_cwd(fs_tree_cb cb);
 

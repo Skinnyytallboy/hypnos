@@ -416,3 +416,26 @@ void fs_snap_list(fs_snap_list_cb cb)
         cur = cur->next;
     }
 }
+/* --- tree traversal --- */
+
+static void fs_tree_walk(fs_node_t* node, fs_tree_cb cb, int depth)
+{
+    while (node) {
+        cb(node->name, node->is_dir, depth);
+
+        if (node->is_dir && node->child) {
+            fs_tree_walk(node->child, cb, depth + 1);
+        }
+
+        node = node->sibling;
+    }
+}
+
+/* Start tree from current working directory's children */
+void fs_tree_cwd(fs_tree_cb cb)
+{
+    if (!cb || !fs_cwd || !fs_cwd->is_dir)
+        return;
+
+    fs_tree_walk(fs_cwd->child, cb, 0);
+}

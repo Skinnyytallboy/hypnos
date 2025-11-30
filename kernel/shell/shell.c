@@ -9,6 +9,8 @@
 #include "arch/i386/drivers/timer.h"
 
 extern void switch_to_user_mode(void);
+static int tree_count = 0;
+
 
 static void ui_itoa(uint32_t v, char* out) {
     char tmp[16];
@@ -343,6 +345,39 @@ static void cmd_cat(const char *name)
 }
 
 static void cmd_clear(void) { console_clear(); }
+static void tree_printer(const char *name, int is_dir, int depth)
+{
+    tree_count++;
+
+    
+    for (int i = 0; i < depth; i++) {
+        console_write("|   ");
+    }
+
+    
+    console_write("|-- ");
+
+    
+    console_write(name);
+    if (is_dir)
+        console_write("/");
+
+    console_write("\n");
+}
+
+static void cmd_tree(void)
+{
+    console_write(".\n");
+
+    
+    tree_count = 0;
+    fs_tree_cwd(tree_printer);
+
+    if (tree_count == 0) {
+        console_write("  <empty>\n");
+    }
+}
+
 
 static void cmd_uptime(void)
 {
@@ -423,6 +458,8 @@ static void shell_execute(const char *cmd)
         console_write("  whoami/users  - security info\n");
         console_write("  login <user>  - switch user\n");
         console_write("  log           - show audit log\n");
+        console_write("  tree          - show directory tree\n");
+        
     }
     else if (!kstrcmp(cmd, "clear"))
         cmd_clear();
@@ -440,6 +477,8 @@ static void shell_execute(const char *cmd)
         cmd_cd("..");
     else if (!kstrncmp(cmd, "cd ", 3))
         cmd_cd(cmd + 3);
+    else if (!kstrcmp(cmd, "tree"))
+        cmd_tree();
     else if (!kstrncmp(cmd, "edit ", 5))
     {
         const char *name = cmd + 5;
@@ -637,6 +676,9 @@ void shell_keypress(char c) {
         console_write(s);
     }
 }
+
+
+
 
 
 void shell_init(void) { input_len = 0; }
