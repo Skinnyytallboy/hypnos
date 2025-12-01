@@ -16,9 +16,17 @@ switch_to_user_mode:
 
     mov $user_stack_top, %eax
 
+    # SS and ESP for ring 3
     pushl $USER_DATA_SEL
     pushl %eax
-    pushfl
+
+    # Get current EFLAGS, turn IF on, push them for ring 3
+    pushf
+    pop %ecx
+    or $0x200, %ecx         # bit 9 = IF
+    push %ecx
+
+    # CS and EIP for ring 3
     pushl $USER_CODE_SEL
     pushl $user_program_main
     iret

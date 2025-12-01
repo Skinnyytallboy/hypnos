@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "idt.h"
 #include "isr.h"
+#include "syscall.h"
 
 extern void idt_load(uint32_t);
 
@@ -22,13 +23,33 @@ void idt_init(void)
     idtp.limit = sizeof(idt) - 1;
     idtp.base  = (uint32_t)&idt;
 
-    // Clear everything
-    for (int i = 0; i < 256; i++) {
+    // Clear ONLY CPU exception entries (0–31)
+    for (int i = 0; i < 32; i++) {
         idt_set_gate(i, 0, 0x08, 0x8E);
     }
 
-    // Install CPU exception handlers 0–31
+    // DO NOT touch IRQs (32–47)
+    // DO NOT touch syscall (0x80)
+
+    // Install CPU exceptions
     isr_install();
 
     idt_load((uint32_t)&idtp);
+}
+
+// void idt_init(void)
+// {
+//     idtp.limit = sizeof(idt) - 1;
+//     idtp.base  = (uint32_t)&idt;
+
+//     for (int i = 0; i < 256; i++) idt_set_gate(i, 0, 0x08, 0x8E);
+
+//     isr_install();
+//     syscall_init();
+
+//     idt_load((uint32_t)&idtp);
+// }
+struct idt_entry* idt_get_array(void)
+{
+    return idt;
 }

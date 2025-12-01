@@ -35,6 +35,8 @@ OBJS := \
 	$(BUILD)/security.o \
 	$(BUILD)/user_mode.o \
 	$(BUILD)/user_program.o \
+    $(BUILD)/log.o \
+	 $(BUILD)/syscall.o  \
 	$(BUILD)/log.o \
 	$(BUILD)/debugcon.o \
 	$(BUILD)/ramdisk.o \
@@ -48,6 +50,10 @@ OBJS := \
 .PHONY: all run iso clean run-gtk run-sdl run-curses
 
 all: iso
+
+$(BUILD)/syscall.o: kernel/syscall.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/fs_bootstrap.o: kernel/fs_bootstrap.c
 	@mkdir -p $(BUILD)
