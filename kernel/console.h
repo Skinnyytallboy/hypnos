@@ -28,7 +28,7 @@ enum vga_color {
 
 /* Internal state (header-only, but synced via HW cursor) */
 static uint16_t* const vga_buffer = (uint16_t*)0xB8000;
-static uint32_t sleep_timer=1000;
+static uint32_t sleep_timer=5000;
 static size_t  console_row   = 0;
 static size_t  console_col   = 0;
 static uint8_t console_color = (COLOR_LIGHT_GREY | (COLOR_BLACK << 4));
@@ -153,16 +153,32 @@ static inline void console_clear(void) {
     console_col = 0;
     vga_set_hw_cursor(console_row, console_col);
 }
+static inline void console_clear_to_eol(void) {
+    size_t row = console_row;
+    size_t col = console_col;
+
+    for (size_t x = col; x < VGA_WIDTH; x++) {
+        vga_buffer[row * VGA_WIDTH + x] = vga_entry(' ', console_color);
+    }
+
+    // cursor stays where it was
+    vga_set_hw_cursor(console_row, console_col);
+}
+
 
 /* Print a single character */
 static inline void console_putc(char c) {
-    if (c == '\n') {
-        console_col = 0;
-        console_row++;
-        console_scroll();
-        vga_set_hw_cursor(console_row, console_col);
-        return;
-    }
+   if (c == '\n') {
+    // Clean remainder of line before moving
+    console_clear_to_eol();
+
+    console_col = 0;
+    console_row++;
+    console_scroll();
+    vga_set_hw_cursor(console_row, console_col);
+    return;
+}
+
 
     if (c == '\r') {
         console_col = 0;
@@ -194,6 +210,7 @@ static inline void console_putc(char c) {
     console_col++;
     vga_set_hw_cursor(console_row, console_col);
 }
+
 
 /* Print a string */
 static inline void console_write(const char* s) {

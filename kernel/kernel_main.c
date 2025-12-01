@@ -11,7 +11,7 @@
 #include "arch/i386/mm/physmem.h"
 #include "arch/i386/mm/kmalloc.h"
 #include "shell/shell.h"
-// #include "task.h"
+#include "sched/task.h"
 #include "fs/fs.h"
 #include "fs/crypto.h"
 #include "log.h"
@@ -36,29 +36,26 @@
 extern volatile uint32_t timer_ticks;   
 
 
+
 static void sleep_ticks(uint32_t ticks)
 {
     if (ticks == 0)
         return;
 
-    uint32_t start = timer_ticks;
+    uint32_t start = timer_get_ticks();
 
     if (start == 0) {
-        /* Timer not running yet: approximate delay using a busy loop.
-         * The constant here is arbitrary; tune it with sleep_timer.
-         */
+        /* Timer not running yet: approximate delay using a busy loop. */
         for (volatile uint32_t i = 0; i < ticks * 100000; ++i) {
             __asm__ volatile("nop");
         }
         return;
     }
 
-    /* Timer is running: use proper tick-based sleep */
-    while ((uint32_t)(timer_ticks - start) < ticks) {
+    while ((uint32_t)(timer_get_ticks() - start) < ticks) {
         __asm__ volatile("hlt");
     }
 }
-
 
 static void print_ascii_banner(void)
 {
@@ -86,6 +83,7 @@ static void banner(const char* msg) {
     console_write("\n");
     console_set_theme_default();
 }
+
 static void loading_animation(const char* msg)
 {
     console_write(msg);
@@ -98,13 +96,39 @@ static void loading_animation(const char* msg)
     console_write("\n");
 }
 
+extern void shell_init(void);
+extern void shell_run(void);
+
+static void shell_thread(void)
+{
+    shell_init();
+    shell_run();   // never returns
+}
+
+static void demo_task(void)
+{
+    size_t y = 10;
+    size_t x = 0;
+    while (1) {
+        console_set_color(COLOR_GREEN, COLOR_BLACK);
+        char c = '.';
+        console_put_at(c, x, y);
+        x++;
+        if (x >= VGA_WIDTH) {
+            x = 0;
+            for (size_t i = 0; i < VGA_WIDTH; i++)
+                console_put_at(' ', i, y);
+        }
+        console_set_theme_default();
+        task_yield();
+    }
+}
+
 
 void kernel_main(void)
 {
     console_set_theme_default();
     console_clear();
-
-   
 
     gdt_init();
     ok("GDT initialized.");
@@ -169,18 +193,18 @@ void kernel_main(void)
     sleep_ticks(sleep_timer);
     __asm__ volatile ("sti");
 
-     console_clear();
-    print_ascii_banner();
-    banner("=== Hypnos kernel booted ===");
-    banner("Starting Hypnos Shell...");
-    shell_init();
-    shell_run();
+   task_init();
 
-    // extern void switch_to_user_mode(void);
-    // console_write("\nLaunching first user program...\n");
-    // switch_to_user_mode();   // jumps to Ring 3, never returns
+console_clear();
+print_ascii_banner();
+banner("=== Hypnos kernel booted ===");
+banner("Starting multitasking demo...");
 
-    for (;;) {
-        __asm__ volatile ("hlt");
-    }
+// NOW create tasks
+task_create(shell_thread, "shell");
+task_create(demo_task, "demo");
+
+// NOW start scheduler
+scheduler_start();
+
 }
