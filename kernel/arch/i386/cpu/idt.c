@@ -28,9 +28,6 @@ void idt_init(void)
         idt_set_gate(i, 0, 0x08, 0x8E);
     }
 
-    // DO NOT touch IRQs (32–47)
-    // DO NOT touch syscall (0x80)
-
     // Install CPU exceptions
     isr_install();
 

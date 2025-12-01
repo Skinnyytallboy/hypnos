@@ -1,5 +1,3 @@
-# Multiboot v1 header + 32-bit entry point
-
 .set ALIGN,    1<<0
 .set MEMINFO,  1<<1
 .set FLAGS,    ALIGN | MEMINFO
@@ -9,7 +7,6 @@
     .section .text
     .align 4
 
-    # ---- Multiboot header (must be in first 8KiB of .text) ----
     .long MAGIC
     .long FLAGS
     .long CHECKSUM

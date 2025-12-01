@@ -19,7 +19,6 @@ static size_t editor_len    = 0;
 static char   editor_name[EDITOR_NAME_MAX];
 static int    editor_active = 0;
 
-/* Draw a simple status line on the last row. */
 static void editor_draw_status(void)
 {
     size_t old_row, old_col;
@@ -49,12 +48,9 @@ static void editor_draw_status(void)
     console_set_cursor(old_row, old_col);
 }
 
-/* Save current buffer to file in the current directory. */
 static void editor_save_file(void)
 {
-    editor_buf[editor_len] = 0; /* ensure null-terminated */
-
-    /* If buffer is empty, just ensure file exists and call it saved */
+    editor_buf[editor_len] = 0; 
     if (editor_len == 0) {
         if (fs_touch(editor_name) == 0) {
             console_write("\n[editor] Saved (empty file).\n");
@@ -64,7 +60,6 @@ static void editor_save_file(void)
         return;
     }
 
-    /* Non-empty: write into current directory using simple helper */
     if (fs_write_cwd(editor_name, editor_buf) == 0) {
         console_write("\n[editor] Saved.\n");
     } else {
@@ -76,8 +71,6 @@ void editor_start(const char* filename)
 {
     if (!filename || !filename[0])
         return;
-
-    /* Copy filename into our own static buffer */
     int i = 0;
     while (filename[i] && i < EDITOR_NAME_MAX - 1) {
         editor_name[i] = filename[i];
@@ -85,13 +78,10 @@ void editor_start(const char* filename)
     }
     editor_name[i] = 0;
 
-    /* Always start with an empty buffer (we're not loading file contents) */
     editor_len    = 0;
     editor_buf[0] = 0;
-
     editor_active = 1;
 
-    /* Clear screen and print header */
     console_clear();
     console_set_theme_banner();
     console_write("Hypnos editor - editing: ");
@@ -107,14 +97,12 @@ void editor_handle_key(char c)
     if (!editor_active)
         return;
 
-    /* ESC (27) => save + exit */
     if ((unsigned char)c == 27) {
         editor_save_file();
         editor_active = 0;
         return;
     }
 
-    /* Backspace */
     if (c == '\b') {
         if (editor_len > 0) {
             editor_len--;
@@ -122,8 +110,6 @@ void editor_handle_key(char c)
         }
         return;
     }
-
-    /* Newline */
     if (c == '\n') {
         if (editor_len < EDITOR_BUF_SIZE - 1) {
             editor_buf[editor_len++] = '\n';
@@ -132,7 +118,6 @@ void editor_handle_key(char c)
         return;
     }
 
-    /* Printable ASCII */
     if (c >= ' ' && c <= '~') {
         if (editor_len < EDITOR_BUF_SIZE - 1) {
             editor_buf[editor_len++] = c;
@@ -141,8 +126,6 @@ void editor_handle_key(char c)
         }
         return;
     }
-
-    /* ignore anything else */
 }
 
 int editor_is_active(void)

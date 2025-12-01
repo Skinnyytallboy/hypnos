@@ -1,8 +1,6 @@
 #pragma once
 #include <stdint.h>
 
-/* -------------------- GDT structures -------------------- */
-
 struct gdt_entry {
     uint16_t limit_low;
     uint16_t base_low;
@@ -17,7 +15,6 @@ struct gdt_ptr {
     uint32_t base;
 } __attribute__((packed));
 
-/* -------------------- TSS structure --------------------- */
 /* Hardware Task State Segment (32-bit) */
 
 struct tss_entry {
@@ -50,14 +47,10 @@ struct tss_entry {
     uint16_t iomap_base;
 } __attribute__((packed));
 
-/* -------------------- API ------------------------------- */
-
 void gdt_init(void);
 
 /* Allow kernel to update esp0 if we later have per-task stacks */
 void tss_set_kernel_stack(uint32_t stack_top);
-
-/* -------------------- Segment selectors ----------------- */
 
 #define GDT_ENTRY_NULL      0
 #define GDT_ENTRY_KCODE     1

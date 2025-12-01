@@ -13,8 +13,8 @@ struct fs_node {
     char* data;
     uint32_t size;
     struct fs_node* parent;
-    struct fs_node* child;   /* first child */
-    struct fs_node* sibling; /* next sibling in same dir */
+    struct fs_node* child;
+    struct fs_node* sibling;
 };
 
 typedef struct fs_node fs_node_t;
@@ -32,7 +32,6 @@ typedef struct snap {
 
 static snap_t* snap_head = NULL;
 
-/* --- tiny string helpers (no libc) --- */
 
 static int kstrcmp(const char* a, const char* b) {
     while (*a && (*a == *b)) { a++; b++; }
@@ -58,7 +57,6 @@ static void kstrncpy(char* dst, const char* src, size_t n) {
     else dst[n-1] = 0;
 }
 
-/* --- basic node utilities --- */
 
 static fs_node_t* fs_new_node(const char* name, int is_dir)
 {
@@ -212,7 +210,7 @@ int fs_touch(const char* path)
     fs_node_t* node = fs_find_in_dir(parent, last);
     if (node) {
         if (node->is_dir) return -1;
-        return 0;  /* file already exists */
+        return 0;
     }
 
     node = fs_new_node(last, 0);
@@ -245,29 +243,22 @@ int fs_write(const char* path, const char* data)
     char* buf = (char*)kmalloc(len + 1);
     if (!buf) return -1;
 
-    /* encrypt plaintext into node->data */
     crypto_encrypt((const uint8_t*)data, (uint8_t*)buf, len);
-    buf[len] = 0;              /* keep it C-string-like, even if encrypted */
+    buf[len] = 0;
 
     node->data = buf;
     node->size = (uint32_t)len;
 
     return 0;
 }
-/* Simple helper: write file in current directory (no path resolving). */
+
 int fs_write_cwd(const char* name, const char* data)
 {
     if (!name || !name[0] || !data)
         return -1;
-
-    /* Must have a current directory */
     if (!fs_cwd || !fs_cwd->is_dir)
         return -1;
-
-    /* See if file already exists in cwd */
     fs_node_t* node = fs_find_in_dir(fs_cwd, name);
-
-    /* If it doesn't exist, create it in cwd */
     if (!node) {
         node = fs_new_node(name, 0);
         if (!node) return -1;
@@ -276,11 +267,8 @@ int fs_write_cwd(const char* name, const char* data)
         fs_cwd->child = node;
     }
 
-    /* If it's a directory, we can't write file data into it */
     if (node->is_dir)
         return -1;
-
-    /* Encrypt and store data */
     size_t len = kstrlen(data);
 
     char* buf = (char*)kmalloc(len + 1);
@@ -302,7 +290,6 @@ const char* fs_read(const char* path)
     if (!node || node->is_dir || !node->data || node->size == 0)
         return NULL;
 
-    /* allocate buffer for decrypted data */
     char* buf = (char*)kmalloc(node->size + 1);
     if (!buf) return NULL;
 
@@ -399,7 +386,6 @@ int fs_snap_restore(const char* name)
     snap_t* cur = snap_head;
     while (cur) {
         if (!kstrcmp(cur->name, name)) {
-            /* for now: just switch root & cwd to this snapshot copy */
             fs_root = cur->root_copy;
             fs_cwd  = fs_root;
             return 0;
@@ -416,9 +402,7 @@ void fs_snap_list(fs_snap_list_cb cb)
         cur = cur->next;
     }
 }
-/* --- helpers used by new FS operations --- */
 
-/* small substring helper using existing kstrncmp/kstrlen */
 static const char* kstrstr(const char* hay, const char* needle)
 {
     if (!hay || !needle) return NULL;
@@ -448,18 +432,15 @@ static void fs_detach_from_parent(fs_node_t* node)
     }
 }
 
-/* ---------- new public functions ---------- */
-
 int fs_unlink(const char *path)
 {
     if (!path || !*path) return -1;
     fs_node_t* node = fs_resolve(path, 0, NULL);
     if (!node) return -1;
-    if (node->is_dir) return -1; /* not a file */
+    if (node->is_dir) return -1;
     if (!node->parent) return -1;
 
     fs_detach_from_parent(node);
-    /* note: we don't free kmalloc'd data/nodes in this tiny FS */
     return 0;
 }
 
@@ -469,9 +450,9 @@ int fs_rmdir(const char *path)
     fs_node_t* node = fs_resolve(path, 0, NULL);
     if (!node) return -1;
     if (!node->is_dir) return -1;
-    if (node->child) return -1; /* non-empty */
+    if (node->child) return -1;
 
-    if (node == fs_root) return -1; /* cannot remove root */
+    if (node == fs_root) return -1;
 
     fs_detach_from_parent(node);
     return 0;
@@ -481,24 +462,19 @@ int fs_rename(const char *oldpath, const char *newpath)
 {
     if (!oldpath || !newpath) return -1;
 
-    /* locate source node */
     fs_node_t* src = fs_resolve(oldpath, 0, NULL);
     if (!src) return -1;
 
-    /* resolve destination parent and last component */
     char last[MAX_NAME_LEN];
     fs_node_t* dst_parent = fs_resolve(newpath, 1, last);
     if (!dst_parent || !dst_parent->is_dir) return -1;
     if (!last[0]) return -1;
 
-    /* ensure no existing node with same name in destination */
     if (fs_find_in_dir(dst_parent, last))
         return -1;
 
-    /* cannot move root */
     if (src == fs_root) return -1;
 
-    /* detach source from old parent and attach to new parent */
     fs_detach_from_parent(src);
     kstrncpy(src->name, last, MAX_NAME_LEN);
     src->parent = dst_parent;
@@ -522,11 +498,9 @@ int fs_copy(const char *src_path, const char *dst_path)
     if (!dst_parent || !dst_parent->is_dir) return -1;
     if (!last[0]) return -1;
 
-    /* if destination already exists, fail */
     if (fs_find_in_dir(dst_parent, last))
         return -1;
 
-    /* create node and copy data blob as-is (encrypted bytes preserved) */
     fs_node_t* n = fs_new_node(last, 0);
     if (!n) return -1;
     n->parent = dst_parent;
@@ -546,20 +520,17 @@ int fs_copy(const char *src_path, const char *dst_path)
     return 0;
 }
 
-/* recursive walker to produce path and print matches */
 static void fs_find_walk(fs_node_t* node, char* pathbuf, size_t pathlen, const char* needle)
 {
     while (node) {
         size_t orig_len = pathlen;
         if (pathlen == 1 && pathbuf[0] == '/') {
-            /* root path already '/' -> append name directly */
             size_t i = 1;
             for (size_t j = 0; node->name[j] && i + j + 1 < MAX_PATH_LEN; j++)
                 pathbuf[i + j] = node->name[j];
             pathlen = orig_len + kstrlen(node->name);
             pathbuf[pathlen] = 0;
         } else {
-            /* append "/" + name */
             if (pathlen + 1 < MAX_PATH_LEN) {
                 pathbuf[pathlen++] = '/';
                 pathbuf[pathlen] = 0;
@@ -579,7 +550,6 @@ static void fs_find_walk(fs_node_t* node, char* pathbuf, size_t pathlen, const c
             fs_find_walk(node->child, pathbuf, pathlen, needle);
         }
 
-        /* restore path length for sibling iteration */
         pathbuf[orig_len] = 0;
         pathlen = orig_len;
 
@@ -593,15 +563,12 @@ int fs_find(const char *name)
     if (!fs_root) return -1;
 
     char buf[MAX_PATH_LEN];
-    /* start from root; handle root's children */
     buf[0] = '/';
     buf[1] = 0;
     if (fs_root->child)
         fs_find_walk(fs_root->child, buf, 1, name);
     return 0;
 }
-
-/* --- tree traversal --- */
 
 static void fs_tree_walk(fs_node_t* node, fs_tree_cb cb, int depth)
 {
@@ -616,7 +583,6 @@ static void fs_tree_walk(fs_node_t* node, fs_tree_cb cb, int depth)
     }
 }
 
-/* Start tree from current working directory's children */
 void fs_tree_cwd(fs_tree_cb cb)
 {
     if (!cb || !fs_cwd || !fs_cwd->is_dir)

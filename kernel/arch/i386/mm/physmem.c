@@ -44,12 +44,10 @@ void phys_init(void)
 {
     console_write("Initializing physical memory allocator...\n");
 
-    // clear bitmap
     for (uint32_t i = 0; i < MAX_FRAMES / 32; i++) {
         frame_bitmap[i] = 0;
     }
 
-    // mark frames up to end of kernel as used
     uint32_t kernel_end_addr = (uint32_t)&kernel_end;
     uint32_t first_free_addr = (kernel_end_addr + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 

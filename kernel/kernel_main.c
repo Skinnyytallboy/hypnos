@@ -53,7 +53,7 @@ static void sleep_ticks(uint32_t ticks)
     uint32_t start = timer_get_ticks();
 
         /* Timer not running yet: approximate delay using a busy loop.
-         * The constant here is arbitrary; tune it with sleep_timer.
+         * The constant here is arbitrary;
          */
         
     if (start == 0) {

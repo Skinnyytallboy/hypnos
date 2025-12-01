@@ -69,7 +69,6 @@ static void keyboard_callback(void)
         return;
     }
 
-    /* key press */
     if (scancode == SC_LSHIFT || scancode == SC_RSHIFT) {
         shift_pressed = 1;
         return;
@@ -83,21 +82,19 @@ static void keyboard_callback(void)
         return;
     }
     if (scancode == SC_CAPS) {
-        caps_lock = !caps_lock;   /* toggle */
+        caps_lock = !caps_lock;
         return;
     }
 
     char c = 0;
     if (scancode < 128) {
-        /* base character from unshifted map */
         char base = keymap[scancode];
 
         if (!base)
-            return;  /* unknown/non-printable we don't handle here */
+            return;
 
         int use_shift = shift_pressed;
 
-        /* For letters: CapsLock XOR Shift decides case */
         if (is_letter(base)) {
             if (caps_lock)
                 use_shift = !use_shift;
@@ -111,7 +108,6 @@ static void keyboard_callback(void)
             }
             c = base;
         } else {
-            /* non-letter: caps has no effect, only shift map */
             if (use_shift)
                 c = keymap_shift[scancode] ? keymap_shift[scancode] : base;
             else
@@ -120,7 +116,6 @@ static void keyboard_callback(void)
     }
 
     if (c) {
-        /* For now we ignore ctrl/alt combos and just send chars to shell */
         shell_keypress(c);
     }
 }

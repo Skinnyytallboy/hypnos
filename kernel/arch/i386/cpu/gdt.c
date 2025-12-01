@@ -2,7 +2,7 @@
 #include "gdt.h"
 
 extern void gdt_flush(uint32_t);
-extern void tss_flush(uint32_t);   // new: loads TR with TSS selector
+extern void tss_flush(uint32_t);
 
 /* We now have:
  * 0: null
@@ -15,14 +15,11 @@ extern void tss_flush(uint32_t);   // new: loads TR with TSS selector
 static struct gdt_entry gdt[6];
 static struct gdt_ptr   gp;
 
-/* Single global TSS instance */
 static struct tss_entry tss;
 
-/* A dedicated kernel stack used when CPU switches from ring3 -> ring0 */
 static uint8_t kernel_tss_stack[4096];
 
-static void gdt_set_entry(int num, uint32_t base, uint32_t limit,
-                          uint8_t access, uint8_t gran)
+static void gdt_set_entry(int num, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran)
 {
     gdt[num].base_low    = (base & 0xFFFF);
     gdt[num].base_middle = (base >> 16) & 0xFF;
@@ -35,18 +32,15 @@ static void gdt_set_entry(int num, uint32_t base, uint32_t limit,
     gdt[num].access      = access;
 }
 
-/* Write a TSS descriptor into the GDT at index 'num' */
 static void write_tss(int num, uint16_t ss0, uint32_t esp0)
 {
     uint32_t base  = (uint32_t)&tss;
     uint32_t limit = base + sizeof(struct tss_entry);
 
-    /* Set GDT entry for TSS (0x89 = present, type 32-bit TSS (available)) */
     gdt_set_entry(num, base, limit,
                   0x89,        /* access */
                   0x40);       /* granularity: 32-bit, byte granularity */
 
-    /* Clear entire TSS */
     for (uint32_t *p = (uint32_t*)&tss;
          p < (uint32_t*)(&tss + 1);
          ++p)

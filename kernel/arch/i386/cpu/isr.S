@@ -64,20 +64,17 @@ ISR 31
 .extern syscall_handler
 
 isr80_syscall:
-    # Save segment registers and switch to kernel data segment
     push %ds
     push %es
     mov $0x10, %ax          # kernel data selector
     mov %ax, %ds
     mov %ax, %es
 
-    # Save callee-saved GPRs we must preserve for user mode
     push %ebp
     push %edi
     push %esi
     push %ebx
 
-    # Build C-call stack: (a3, a2, a1, num)
     push %edx               # a3
     push %ecx               # a2
     push %ebx               # a1

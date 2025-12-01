@@ -48,12 +48,10 @@ static int ata_wait(void)
 {
     uint8_t status;
 
-    // Wait for BSY clear
     do {
         status = inb(ATA_PRIMARY_IO + ATA_REG_STATUS);
     } while (status & ATA_SR_BSY);
 
-    // Wait for DRQ set or error
     while (!(status & (ATA_SR_DRQ | ATA_SR_ERR))) {
         status = inb(ATA_PRIMARY_IO + ATA_REG_STATUS);
     }
@@ -64,7 +62,7 @@ static int ata_wait(void)
 }
 
 typedef struct ata_dev {
-    block_device_t dev;  // must be first
+    block_device_t dev; 
 } ata_dev_t;
 
 
@@ -73,7 +71,7 @@ static int ata_read_sectors(uint32_t lba, uint8_t count, void *buffer)
 {
     if (count == 0) return 0;
 
-    outb(ATA_PRIMARY_CTRL, 0x00); // disable IRQs for simplicity
+    outb(ATA_PRIMARY_CTRL, 0x00);
 
     outb(ATA_PRIMARY_IO + ATA_REG_HDDEVSEL, 0xE0 | ((lba >> 24) & 0x0F));
     outb(ATA_PRIMARY_IO + ATA_REG_SECCOUNT0, count);
@@ -99,7 +97,7 @@ static int ata_write_sectors(uint32_t lba, uint8_t count, const void *buffer)
 {
     if (count == 0) return 0;
 
-    outb(ATA_PRIMARY_CTRL, 0x00); // disable IRQs for simplicity
+    outb(ATA_PRIMARY_CTRL, 0x00);
 
     outb(ATA_PRIMARY_IO + ATA_REG_HDDEVSEL, 0xE0 | ((lba >> 24) & 0x0F));
     outb(ATA_PRIMARY_IO + ATA_REG_SECCOUNT0, count);
@@ -122,8 +120,6 @@ static int ata_write_sectors(uint32_t lba, uint8_t count, const void *buffer)
     return 0;
 }
 
-/* blockdev glue */
-
 static int ata_block_read(block_device_t *dev,
                           uint64_t lba,
                           uint32_t count,
@@ -131,7 +127,7 @@ static int ata_block_read(block_device_t *dev,
 {
     (void)dev;
     if (count == 0) return 0;
-    if (lba > 0x0FFFFFFF) return -1; // beyond LBA28
+    if (lba > 0x0FFFFFFF) return -1;
 
     if (count > 255) count = 255;
     return ata_read_sectors((uint32_t)lba, (uint8_t)count, buffer);

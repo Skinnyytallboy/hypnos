@@ -109,7 +109,7 @@ switch_task:
     mov 0(%ecx), %eax
     mov 4(%ecx), %ebx
     mov 8(%ecx), %edx
-    mov 12(%ecx), %edx       # overwrite ecx later
+    mov 12(%ecx), %edx
     mov 16(%ecx), %esi
     mov 20(%ecx), %edi
     mov 24(%ecx), %ebp

@@ -23,7 +23,6 @@ static inline uint8_t inb(uint16_t port) {
     return ret;
 }
 
-/* called from asm stubs for IRQ0–15 */
 void irq_handler_c(int irq_no)
 {
     if (irq_no < 16 && irq_handlers[irq_no]) {
@@ -43,10 +42,8 @@ void irq_register_handler(int irq, irq_handler_t handler)
         irq_handlers[irq] = handler;
 }
 
-/* remap PIC to vectors 32–47 and install IDT gates */
 void irq_install(void)
 {
-    /* save masks */
     uint8_t a1 = inb(PIC1_DATA);
     uint8_t a2 = inb(PIC2_DATA);
 
@@ -63,7 +60,6 @@ void irq_install(void)
     /* ICW4: Environment info */
     outb(PIC1_DATA, 0x01);
     outb(PIC2_DATA, 0x01);
-
     /* restore masks */
     outb(PIC1_DATA, a1);
     outb(PIC2_DATA, a2);

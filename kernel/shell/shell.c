@@ -11,7 +11,7 @@
 #include "fs/blockdev.h"
 #include "arch/i386/drivers/ata_pio.h"
 
-extern block_device_t *ata_pio_init(void); // already called in kernel_main
+extern block_device_t *ata_pio_init(void);
 extern block_device_t *blockdev_get_root(void);
 
 static void cmd_diskread(const char *arg)
@@ -23,7 +23,7 @@ static void cmd_diskread(const char *arg)
         arg++;
     }
 
-    block_device_t *dev = blockdev_get_root(); // or ata0 if you store it
+    block_device_t *dev = blockdev_get_root();
     if (!dev) {
         console_write("diskread: no root block device\n");
         return;
@@ -36,7 +36,6 @@ static void cmd_diskread(const char *arg)
     }
 
     console_write("Sector ");
-    // simple print of first bytes
     for (int i = 0; i < 64; ++i) {
         char c = buf[i];
         if (c < 32 || c > 126) c = '.';
@@ -87,7 +86,6 @@ static uint32_t last_bar_second = 0;
 static char   input_buffer[SHELL_INPUT_MAX];
 static size_t input_len = 0;
 
-/* ---------------- small helpers ---------------- */
 
 static int tree_count = 0;
 static void ui_itoa(uint32_t v, char* out) {
@@ -131,8 +129,6 @@ static int kstrncmp(const char *a, const char *b, size_t n)
         return 0;
     return (unsigned char)*a - (unsigned char)*b;
 }
-
-/* ---------------- status bar ---------------- */
 
 static void shell_draw_status_bar(void)
 {
@@ -183,8 +179,6 @@ static void shell_draw_status_bar(void)
     console_set_cursor(old_row, old_col);
 }
 
-/* ---------------- prompt ---------------- */
-
 static void shell_print_prompt(void)
 {
     shell_draw_status_bar();
@@ -200,8 +194,6 @@ static void shell_print_prompt(void)
     console_write(">");
     console_set_theme_default();
 }
-
-/* ---------------- command helpers ---------------- */
 
 static void ls_printer(const char *name, int is_dir)
 {
@@ -358,7 +350,6 @@ static void cmd_cd(const char *path)
         return;
     }
 
-    /* normal "cd folder" */
     if (fs_chdir(path) == 0)
         cmd_pwd();
     else
@@ -506,14 +497,11 @@ static void cmd_exit(void)
     }
 }
 
-/* ---------------- command dispatcher ---------------- */
-
 static void shell_execute(const char *cmd)
 {
     if (cmd[0] == 0)
         return;
 
-    /* simple logging of commands: two entries */
     log_event("[SHELL] command");
     log_event(cmd);
 
@@ -832,8 +820,6 @@ static void shell_execute(const char *cmd)
          console_write("Unknown command. Type 'help'.\n");
 }
 
-/* ---------------- input handling / main loop ---------------- */
-
 void shell_keypress(char c) {
     
     if (editor_is_active()) {
@@ -845,7 +831,6 @@ void shell_keypress(char c) {
         return;
     }
 
-    /* Normal shell command-line handling */
     if (c == '\b')
     {
         if (input_len > 0)

@@ -1,4 +1,3 @@
-// kernel/arch/i386/drivers/timer.h
 #pragma once
 #include <stdint.h>
 

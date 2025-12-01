@@ -117,11 +117,8 @@ static inline void console_put_at(char c, size_t x, size_t y) {
  * scrolled up and mixing with normal shell output.
  */
 static inline void console_scroll(void) {
-    /* Only scroll when we go past the last CONTENT row (VGA_HEIGHT-2) */
     if (console_row < VGA_HEIGHT - 1)
         return;
-
-    /* move content lines up: rows 1..(HEIGHT-2) -> rows 0..(HEIGHT-3) */
     for (size_t y = 1; y < VGA_HEIGHT - 1; y++) {
         for (size_t x = 0; x < VGA_WIDTH; x++) {
             vga_buffer[(y - 1) * VGA_WIDTH + x] =
@@ -135,13 +132,11 @@ static inline void console_scroll(void) {
             vga_entry(' ', console_color);
     }
 
-    /* after scrolling, keep cursor on the last content row */
     console_row = VGA_HEIGHT - 2;
     if (console_col >= VGA_WIDTH) console_col = 0;
     vga_set_hw_cursor(console_row, console_col);
 }
 
-/* Clear screen and reset cursor (status bar will be redrawn later) */
 static inline void console_clear(void) {
     for (size_t y = 0; y < VGA_HEIGHT; y++) {
         for (size_t x = 0; x < VGA_WIDTH; x++) {
@@ -161,15 +156,12 @@ static inline void console_clear_to_eol(void) {
         vga_buffer[row * VGA_WIDTH + x] = vga_entry(' ', console_color);
     }
 
-    // cursor stays where it was
     vga_set_hw_cursor(console_row, console_col);
 }
 
 
-/* Print a single character */
 static inline void console_putc(char c) {
    if (c == '\n') {
-    // Clean remainder of line before moving
     console_clear_to_eol();
 
     console_col = 0;
@@ -200,8 +192,6 @@ static inline void console_putc(char c) {
         console_row++;
         console_scroll();
     }
-
-    /* Make sure we never print normal text into the status bar row */
     if (console_row >= VGA_HEIGHT - 1) {
         console_scroll();
     }
@@ -212,7 +202,6 @@ static inline void console_putc(char c) {
 }
 
 
-/* Print a string */
 static inline void console_write(const char* s) {
     if (!s) return;
     while (*s) {
@@ -220,7 +209,6 @@ static inline void console_write(const char* s) {
     }
 }
 
-/* Optional: set a "theme" */
 static inline void console_set_theme_default(void) {
     console_set_color(COLOR_LIGHT_GREY, COLOR_BLACK);
 }

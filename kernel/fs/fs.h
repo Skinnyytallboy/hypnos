@@ -20,7 +20,6 @@ const char* fs_getcwd(void);
 typedef void (*fs_list_cb)(const char* name, int is_dir);
 void fs_list(fs_list_cb cb);
 
-/* ---------- NEW: snapshot API ---------- */
 typedef void (*fs_snap_list_cb)(const char* name);
 
 int  fs_snap_create(const char* name);      /* 0 = ok, -1 error */
