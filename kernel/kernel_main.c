@@ -52,13 +52,10 @@ static void sleep_ticks(uint32_t ticks)
 
     uint32_t start = timer_get_ticks();
 
-    if (start == 0)
-    {
         /* Timer not running yet: approximate delay using a busy loop.
          * The constant here is arbitrary; tune it with sleep_timer.
          */
-        for (volatile uint32_t i = 0; i < ticks * 100000; ++i)
-        {
+        
     if (start == 0) {
         /* Timer not running yet: approximate delay using a busy loop. */
         for (volatile uint32_t i = 0; i < ticks * 100000; ++i) {
@@ -66,8 +63,6 @@ static void sleep_ticks(uint32_t ticks)
         }
         return;
     }
-    while ((uint32_t)(timer_ticks - start) < ticks)
-    {
 
     while ((uint32_t)(timer_get_ticks() - start) < ticks) {
         __asm__ volatile("hlt");
@@ -102,7 +97,7 @@ static void banner(const char *msg)
     console_write("\n");
     console_set_theme_default();
 }
-static void loading_animation(const char *msg)
+static void loading_animation(const char *msg);
 
 static void loading_animation(const char* msg)
 {
@@ -302,9 +297,9 @@ void kernel_main(void)
 
     log_event("[BOOT] Initial tasks created.");
 
-    for (;;)
-    {
-        __asm__ volatile("hlt");
-    }
+    // for (;;)
+    // {
+    //     __asm__ volatile("hlt");
+    // }
     scheduler_start();
 }

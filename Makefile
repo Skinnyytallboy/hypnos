@@ -37,7 +37,6 @@ OBJS := \
 	$(BUILD)/user_program.o \
     $(BUILD)/log.o \
 	 $(BUILD)/syscall.o  \
-	$(BUILD)/log.o \
 	$(BUILD)/debugcon.o \
 	$(BUILD)/ramdisk.o \
 	$(BUILD)/blockdev.o \
