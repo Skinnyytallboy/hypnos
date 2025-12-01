@@ -28,7 +28,7 @@ enum vga_color {
 
 /* Internal state (header-only, but synced via HW cursor) */
 static uint16_t* const vga_buffer = (uint16_t*)0xB8000;
-static uint32_t sleep_timer=5000;
+static uint32_t sleep_timer=1000;
 static size_t  console_row   = 0;
 static size_t  console_col   = 0;
 static uint8_t console_color = (COLOR_LIGHT_GREY | (COLOR_BLACK << 4));

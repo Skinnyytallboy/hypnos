@@ -35,8 +35,10 @@ OBJS := \
 	$(BUILD)/security.o \
 	$(BUILD)/user_mode.o \
 	$(BUILD)/user_program.o \
-    $(BUILD)/log.o
+	$(BUILD)/log.o \
+	$(BUILD)/debugcon.o
 # 	$(BUILD)/map_user_pages.o \
+
 
 
 .PHONY: all run iso clean run-gtk run-sdl run-curses
@@ -74,6 +76,12 @@ $(BUILD)/entry.o: kernel/arch/i386/start/entry.S
 $(BUILD)/context_switch.o: kernel/arch/i386/start/context_switch.S
 	@mkdir -p $(BUILD)
 	$(CC32) $(ASFLAGS) -c $< -o $@
+
+
+$(BUILD)/debugcon.o: kernel/arch/i386/drivers/debugcon.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
 
 $(BUILD)/gdt.o: kernel/arch/i386/cpu/gdt.c
 	@mkdir -p $(BUILD)
@@ -157,10 +165,11 @@ iso: $(BUILD)/$(TARGET) boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) $(ISODIR)
 
 run: iso
+	mkdir -p logs
+	rm -f logs/all.log
 	qemu-system-i386 -cdrom $(ISO) -m 256 \
-		-m 256 \
-		-no-reboot \
-		-device isa-debug-exit,iobase=0xf4,iosize=0x04
+	    -debugcon file:logs/all.log \
+	    -no-reboot -no-shutdown
 
 
 run-gtk: iso
@@ -170,7 +179,12 @@ run-sdl: iso
 	qemu-system-i386 -cdrom $(ISO) -m 256 -display sdl -no-reboot -no-shutdown
 
 run-curses: iso
-	qemu-system-i386 -cdrom $(ISO) -m 256 -display curses -no-reboot -no-shutdown
+	mkdir -p logs
+	rm -f logs/all.log
+	qemu-system-i386 -cdrom $(ISO) -m 256 -display curses \
+	    -debugcon file:logs/all.log \
+	    -no-reboot -no-shutdown
+
 
 clean:
 	rm -rf $(BUILD)

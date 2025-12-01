@@ -17,25 +17,7 @@
 #include "log.h"
 #include "security.h"
 
-// void thread1(void)
-// {
-//     while (1) {
-//         console_write("[T1]");
-//         task_yield();
-//     }
-// }
-
-// void thread2(void)
-// {
-//     while (1) {
-//         console_write("[T2]");
-//         task_yield();
-//     }
-// }
-
-extern volatile uint32_t timer_ticks;   
-
-
+extern volatile uint32_t timer_ticks;
 
 static void sleep_ticks(uint32_t ticks)
 {
@@ -124,32 +106,40 @@ static void demo_task(void)
     }
 }
 
-
 void kernel_main(void)
 {
     console_set_theme_default();
     console_clear();
 
+    /* start logging for this boot */
+    log_init();
+    log_event("[BOOT] kernel_main entered");
+
     gdt_init();
     ok("GDT initialized.");
+    log_event("[BOOT] GDT initialized.");
     sleep_ticks(sleep_timer);
 
     idt_init();
     ok("IDT initialized.");
-        sleep_ticks(sleep_timer);
+    log_event("[BOOT] IDT initialized.");
+    sleep_ticks(sleep_timer);
 
     paging_init();
     paging_enable();
     ok("Paging initialized and enabled.");
-     sleep_ticks(sleep_timer);
+    log_event("[BOOT] Paging initialized and enabled.");
+    sleep_ticks(sleep_timer);
 
     phys_init();
     ok("Physical memory manager initialized.");
-        sleep_ticks(sleep_timer);
+    log_event("[BOOT] Physical memory manager initialized.");
+    sleep_ticks(sleep_timer);
 
     kmalloc_init();
     ok("Kernel heap initialized.");
-        sleep_ticks(sleep_timer);
+    log_event("[BOOT] Kernel heap initialized.");
+    sleep_ticks(sleep_timer);
 
     {
         char* buf = kmalloc(32);
@@ -160,6 +150,9 @@ void kernel_main(void)
             console_write("Heap test: ");
             console_write(buf);
             console_write("\n");
+            log_event("[BOOT] Heap test OK.");
+        } else {
+            log_event("[BOOT] Heap test FAILED (kmalloc returned NULL).");
         }
     }
 
@@ -167,44 +160,49 @@ void kernel_main(void)
     console_write("Security subsystem initialized. Current user: ");
     console_write(sec_get_current_username());
     console_write("\n");
-        sleep_ticks(sleep_timer);
+    log_event("[BOOT] Security subsystem initialized.");
+    sleep_ticks(sleep_timer);
 
     crypto_set_key("hypnos-default-key");
     ok("Filesystem encryption key installed.");
-        sleep_ticks(sleep_timer);
+    log_event("[BOOT] Filesystem encryption key installed.");
+    sleep_ticks(sleep_timer);
 
     fs_init();
     ok("Filesystem initialized.");
-        sleep_ticks(sleep_timer);
+    log_event("[BOOT] Filesystem initialized.");
+    sleep_ticks(sleep_timer);
 
     irq_install();
     ok("PIC remapped, IRQs installed.");
-        sleep_ticks(sleep_timer);
+    log_event("[BOOT] IRQs installed (PIC remapped).");
+    sleep_ticks(sleep_timer);
 
     timer_install();
     ok("Timer initialized (100 Hz).");
-        sleep_ticks(sleep_timer);
+    log_event("[BOOT] PIT timer initialized (100Hz).");
+    sleep_ticks(sleep_timer);
 
     keyboard_install();
     ok("Keyboard driver installed.");
-        sleep_ticks(sleep_timer);
+    log_event("[BOOT] Keyboard driver installed.");
+    sleep_ticks(sleep_timer);
 
     console_write("Enabling interrupts...\n");
+    log_event("[BOOT] Enabling interrupts (sti).");
     sleep_ticks(sleep_timer);
     __asm__ volatile ("sti");
 
-   task_init();
+    task_init();
+    log_event("[BOOT] Task subsystem initialized.");
 
-console_clear();
-print_ascii_banner();
-banner("=== Hypnos kernel booted ===");
-banner("Starting multitasking demo...");
+    console_clear();
+    print_ascii_banner();
+    banner("=== Hypnos kernel booted ===");
+    banner("Starting Hypnos...");
+    log_event("[BOOT] Hypnos banner displayed.");
+    log_event("[BOOT] Starting shell (single-task mode).");
 
-// NOW create tasks
-task_create(shell_thread, "shell");
-task_create(demo_task, "demo");
-
-// NOW start scheduler
-scheduler_start();
-
+    shell_init();
+    shell_run();  // never returns
 }
