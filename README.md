@@ -22,9 +22,6 @@
 11. [Syscalls & User Mode](#syscalls--user-mode)
 12. [Scheduler & Multitasking](#scheduler--multitasking)
 13. [What Works / What’s Broken](#what-works--whats-broken)
-14. [Roadmap](#roadmap)
-15. [License](#license)
-
 ---
 
 # Introduction
@@ -410,45 +407,5 @@ user → int 0x80 → isr80_syscall → syscall_handler()
 * No ELF loader
 * No userland processes
 * No memory protection between processes
-
----
-
-# Roadmap
-
-### Phase 1 — Base System (Done)
-
-* Boot, GDT, IDT
-* Paging
-* Physical allocator
-* Shell
-* ATA disk
-* Filesystem
-
-### Phase 2 — Stable Syscalls (Pending)
-
-* Fix argument extraction
-* Implement write/read/open/close/exit
-
-### Phase 3 — Preemptive Scheduler
-
-* Timer-driven context switching
-* User stack frames
-* Killable tasks
-
-### Phase 4 — ELF Loader
-
-* Load programs from `/bin`
-* exec(), fork()
-
-### Phase 5 — Device Drivers
-
-* VGA accelerated text
-* Mouse
-* PCI scanning
-
-### Phase 6 — Networking (optional)
-
-* NE2000 / RTL8139
-* Basic TCP/IP stack
 
 ---
