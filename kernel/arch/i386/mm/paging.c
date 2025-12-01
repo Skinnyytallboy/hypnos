@@ -3,8 +3,8 @@
 #include "console.h"
 
 #define PAGE_SIZE        4096
-#define MAX_IDENTITY_MB  64
-#define NUM_PAGE_TABLES  (MAX_IDENTITY_MB / 4)
+#define MAX_IDENTITY_MB  2048
+#define NUM_PAGE_TABLES  (MAX_IDENTITY_MB / 4) // 4MB per page table & total pages = 2048MB
 
 #define PAGE_PRESENT  0x001
 #define PAGE_RW       0x002
@@ -45,28 +45,32 @@ void paging_set_user_for_range(uint32_t start, uint32_t end)
 
 void paging_init(void)
 {
-    console_write("Setting up identity-mapped paging (0–64MB)...\n");
+    console_write("Setting up identity-mapped paging (0–2048MB)...\n");
+
     for (uint32_t i = 0; i < 1024; i++)
         page_directory[i] = 0;
-    /* Build 16 page tables (16 * 4MB = 64MB) */
+
     uint32_t addr = 0;
     for (uint32_t t = 0; t < NUM_PAGE_TABLES; t++) {
         for (uint32_t i = 0; i < 1024; i++) {
             page_tables[t][i] =
                 (addr & ~0xFFFu) |
-                (PAGE_PRESENT | PAGE_RW);   // PTE: present, RW (kernel-only for now)
+                (PAGE_PRESENT | PAGE_RW);
             addr += PAGE_SIZE;
         }
-        // IMPORTANT CHANGE: PDE also has PAGE_USER set 
+
         page_directory[t] =
             ((uint32_t)&page_tables[t]) |
             (PAGE_PRESENT | PAGE_RW | PAGE_USER);
     }
+
     for (uint32_t t = NUM_PAGE_TABLES; t < 1024; t++)
         page_directory[t] = 0;
+
     console_write("Identity map complete.\n");
-    // Make the first 64MB user-accessible (sets PAGE_USER on PTEs)
-    paging_set_user_for_range(0x00000000, 64 * 1024 * 1024);
+
+    // First 2GB user-accessible
+    paging_set_user_for_range(0x00000000, 2048u * 1024u * 1024u);
 }
 
 void paging_enable(void)

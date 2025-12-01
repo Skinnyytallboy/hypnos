@@ -8,6 +8,74 @@
 #include "sched/task.h"
 #include "arch/i386/drivers/keyboard.h"
 #include "arch/i386/drivers/timer.h"
+#include "fs/blockdev.h"
+#include "arch/i386/drivers/ata_pio.h"
+
+extern block_device_t *ata_pio_init(void); // already called in kernel_main
+extern block_device_t *blockdev_get_root(void);
+
+static void cmd_diskread(const char *arg)
+{
+    uint32_t lba = 0;
+    while (*arg == ' ') arg++;
+    while (*arg >= '0' && *arg <= '9') {
+        lba = lba * 10 + (*arg - '0');
+        arg++;
+    }
+
+    block_device_t *dev = blockdev_get_root(); // or ata0 if you store it
+    if (!dev) {
+        console_write("diskread: no root block device\n");
+        return;
+    }
+
+    uint8_t buf[512];
+    if (dev->read(dev, lba, 1, buf) != 0) {
+        console_write("diskread: read error\n");
+        return;
+    }
+
+    console_write("Sector ");
+    // simple print of first bytes
+    for (int i = 0; i < 64; ++i) {
+        char c = buf[i];
+        if (c < 32 || c > 126) c = '.';
+        console_putc(c);
+    }
+    console_write("\n");
+}
+
+static void cmd_diskwrite(const char *arg)
+{
+    // diskwrite <lba> <text>
+    uint32_t lba = 0;
+    while (*arg == ' ') arg++;
+    while (*arg >= '0' && *arg <= '9') {
+        lba = lba * 10 + (*arg - '0');
+        arg++;
+    }
+    while (*arg == ' ') arg++;
+
+    block_device_t *dev = blockdev_get_root();
+    if (!dev) {
+        console_write("diskwrite: no root block device\n");
+        return;
+    }
+
+    uint8_t buf[512];
+    for (int i = 0; i < 512; ++i) buf[i] = 0;
+    int i = 0;
+    while (*arg && i < 511) {
+        buf[i++] = (uint8_t)*arg++;
+    }
+
+    if (dev->write(dev, lba, 1, buf) != 0) {
+        console_write("diskwrite: write error\n");
+        return;
+    }
+
+    console_write("diskwrite: wrote sector\n");
+}
 
 extern void switch_to_user_mode(void);
 extern volatile uint32_t timer_ticks;
@@ -474,15 +542,26 @@ static void shell_execute(const char *cmd)
         console_write("  whoami/users  - security info\n");
         console_write("  login <user>  - switch user\n");
         console_write("  log           - show audit log\n");
+        console_write("  sysinfo       - show information about the system\n");
         console_write("  exit          - shutdown the system\n");
 
     }
     else if (!kstrcmp(cmd, "clear"))
         cmd_clear();
+    else if (!kstrcmp(cmd, "sysinfo")) {
+        console_write("Hypnos system info:\n");
+        console_write("  Logical RAM:  2 GB\n");
+        console_write("  Logical disk: 16 GB\n");
+        console_write("  Actual ramdisk size: 16 MB\n");
+    }
     else if (!kstrcmp(cmd, "uptime"))
         cmd_uptime();
     else if (!kstrncmp(cmd, "echo ", 5))
         cmd_echo(cmd + 5);
+    else if (!kstrncmp(cmd, "diskread ", 9))
+        cmd_diskread(cmd + 9);
+    else if (!kstrncmp(cmd, "diskwrite ", 10))
+        cmd_diskwrite(cmd + 10);
    else if (!kstrcmp(cmd, "panic"))
     cmd_panic();
    else if (!kstrcmp(cmd, "exit"))

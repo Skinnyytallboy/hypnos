@@ -36,7 +36,11 @@ OBJS := \
 	$(BUILD)/user_mode.o \
 	$(BUILD)/user_program.o \
 	$(BUILD)/log.o \
-	$(BUILD)/debugcon.o
+	$(BUILD)/debugcon.o \
+	$(BUILD)/ramdisk.o \
+	$(BUILD)/blockdev.o \
+	$(BUILD)/ata_pio.o \
+	$(BUILD)/fs_bootstrap.o
 # 	$(BUILD)/map_user_pages.o \
 
 
@@ -45,9 +49,25 @@ OBJS := \
 
 all: iso
 
+$(BUILD)/fs_bootstrap.o: kernel/fs_bootstrap.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/ata_pio.o: kernel/arch/i386/drivers/ata_pio.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
 # $(BUILD)/map_user_pages.o: kernel/user/map_user_pages.c
 # 	@mkdir -p $(BUILD)
 # 	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/blockdev.o: kernel/fs/blockdev.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/ramdisk.o: kernel/fs/ramdisk.c
+	@mkdir -p $(BUILD)
+	$(CC32) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/user_program.o: kernel/user/user_program.c
 	@mkdir -p $(BUILD)
@@ -167,21 +187,23 @@ iso: $(BUILD)/$(TARGET) boot/grub/grub.cfg
 run: iso
 	mkdir -p logs
 	rm -f logs/all.log
-	qemu-system-i386 -cdrom $(ISO) -m 256 \
+	qemu-system-i386 -cdrom $(ISO) -m 2048 \
+	  	-hda disk.img \
 	    -debugcon file:logs/all.log \
 	    -no-reboot -no-shutdown
 
 
 run-gtk: iso
-	qemu-system-i386 -cdrom $(ISO) -m 256 -display gtk -no-reboot -no-shutdown
+	qemu-system-i386 -cdrom $(ISO) -m 2048 -hda disk.img -display gtk -no-reboot -no-shutdown
 
 run-sdl: iso
-	qemu-system-i386 -cdrom $(ISO) -m 256 -display sdl -no-reboot -no-shutdown
+	qemu-system-i386 -cdrom $(ISO) -m 2048 -hda disk.img -display sdl -no-reboot -no-shutdown
 
 run-curses: iso
 	mkdir -p logs
 	rm -f logs/all.log
-	qemu-system-i386 -cdrom $(ISO) -m 256 -display curses \
+	qemu-system-i386 -cdrom $(ISO) -m 2048 -display curses \
+		-hda disk.img \
 	    -debugcon file:logs/all.log \
 	    -no-reboot -no-shutdown
 

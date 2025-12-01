@@ -3,7 +3,7 @@
 #include "console.h"
 
 #define PAGE_SIZE       4096
-#define MAX_MEM_BYTES   (64 * 1024 * 1024)     // assume 64MB for now
+#define MAX_MEM_BYTES   (2048u * 1024u * 1024u)   // 2GB as *unsigned*
 #define MAX_FRAMES      (MAX_MEM_BYTES / PAGE_SIZE)
 
 // bitmap: 1 bit per frame

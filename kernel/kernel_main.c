@@ -13,6 +13,10 @@
 #include "shell/shell.h"
 #include "sched/task.h"
 #include "fs/fs.h"
+#include "fs/blockdev.h"
+#include "fs/ramdisk.h"
+#include "arch/i386/drivers/ata_pio.h"
+#include "fs_bootstrap.h"
 #include "fs/crypto.h"
 #include "log.h"
 #include "security.h"
@@ -162,14 +166,38 @@ void kernel_main(void)
     log_event("[BOOT] Security subsystem initialized.");
     sleep_ticks(sleep_timer);
 
+    // crypto_set_key("hypnos-default-key");
+    // ok("Filesystem encryption key installed.");
+    // log_event("[BOOT] Filesystem encryption key installed.");
+    // sleep_ticks(sleep_timer);
+
+    // uint64_t disk_size_bytes = 2ULL * 1024 * 1024 * 1024; // 
+    // block_device_t *rootdev = ramdisk_create(disk_size_bytes);
+    // blockdev_set_root(rootdev);
+
+    // block_device_t *ata0 = ata_pio_init();
+    // (void)ata0; // keep it around for shell commands
+
+    // fs_init();
+    // ok("Filesystem initialized.");
+    // log_event("[BOOT] Filesystem initialized.");
+    // sleep_ticks(sleep_timer);
+
     crypto_set_key("hypnos-default-key");
     ok("Filesystem encryption key installed.");
     log_event("[BOOT] Filesystem encryption key installed.");
     sleep_ticks(sleep_timer);
 
+    // Initialize ATA 8GB disk and make it the root FS device
+    block_device_t *ata0 = ata_pio_init();
+    blockdev_set_root(ata0);
+
     fs_init();
     ok("Filesystem initialized.");
-    log_event("[BOOT] Filesystem initialized.");
+    log_event("[BOOT] Filesystem initialized on /dev/ata0 (8GB).");
+    sleep_ticks(sleep_timer);
+
+    fs_bootstrap();
     sleep_ticks(sleep_timer);
 
     irq_install();
