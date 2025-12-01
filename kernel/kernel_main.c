@@ -84,7 +84,7 @@ extern void shell_run(void);
 static void shell_thread(void)
 {
     shell_init();
-    shell_run();   // never returns
+    shell_run();
 }
 
 static void demo_task(void)
@@ -111,7 +111,6 @@ void kernel_main(void)
     console_set_theme_default();
     console_clear();
 
-    /* start logging for this boot */
     log_init();
     log_event("[BOOT] kernel_main entered");
 
@@ -201,8 +200,11 @@ void kernel_main(void)
     banner("=== Hypnos kernel booted ===");
     banner("Starting Hypnos...");
     log_event("[BOOT] Hypnos banner displayed.");
-    log_event("[BOOT] Starting shell (single-task mode).");
 
-    shell_init();
-    shell_run();  // never returns
+    task_create(shell_thread, "shell");
+    // task_create(demo_task, "demo");
+
+    log_event("[BOOT] Initial tasks created.");
+
+    scheduler_start();
 }

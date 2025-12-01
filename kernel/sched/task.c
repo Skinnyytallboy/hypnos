@@ -78,9 +78,9 @@ task_t *task_create(void (*entry)(void), const char *name)
 
     task_append(t);
 
-    console_write("Task created: ");
-    console_write(name);
-    console_write("\n");
+    // console_write("Task created: ");
+    // console_write(name);
+    // console_write("\n");
 
     log_event("[SCHED] task created.");
     // If you want to also log the name explicitly:
@@ -115,9 +115,9 @@ void scheduler_start(void)
 
     current = task_head;
 
-    console_write("Starting scheduler with task: ");
-    console_write(current->name);
-    console_write("\n");
+    // console_write("Starting scheduler with task: ");
+    // console_write(current->name);
+    // console_write("\n");
 
     log_event("[SCHED] scheduler_start: starting with first task.");
     log_event(current->name);
