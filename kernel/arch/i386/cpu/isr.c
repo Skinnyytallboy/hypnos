@@ -3,6 +3,46 @@
 #include "idt.h"
 #include "console.h"
 
+static void kprint_u32(uint32_t v)
+{
+    char buf[16];
+    int i = 0;
+
+    if (v == 0)
+    {
+        console_write("0");
+        return;
+    }
+
+    while (v > 0 && i < (int)sizeof(buf))
+    {
+        buf[i++] = '0' + (v % 10);
+        v /= 10;
+    }
+    while (i > 0)
+        console_putc(buf[--i]);
+}
+
+
+static void isr_print_uint(int v)
+{
+    char buf[16];
+    int i = 0;
+
+    if (v == 0) {
+        console_write("0");
+        return;
+    }
+
+    while (v > 0 && i < (int)sizeof(buf)) {
+        buf[i++] = '0' + (v % 10);
+        v /= 10;
+    }
+    while (i > 0) {
+        console_putc(buf[--i]);
+    }
+}
+
 /* Assembly ISR entry points */
 extern void isr0();
 extern void isr1();
@@ -89,11 +129,26 @@ static void exception_handler_common(int n)
 {
     console_write("CPU Exception: ");
     console_write(exception_messages[n]);
-    console_write("\nSystem halted.\n");
+    console_write(" (vector ");
+    isr_print_uint(n);
+    console_write(")\nSystem halted.\n");
+
     for (;;) {
         __asm__ volatile ("hlt");
     }
 }
+
+void isr_dispatch(uint32_t vector, uint32_t error)
+{
+    console_write("CPU Exception: ");
+    console_write(exception_messages[vector]);
+    console_write("\nError code: ");
+    kprint_u32(error);
+    console_write("\nHalting.\n");
+
+    for(;;) __asm__("hlt");
+}
+
 
 /* Generate 32 small handlers */
 #define DEFINE_ISR_HANDLER(n) \

@@ -10,10 +10,7 @@
 isr\n:
     cli
     pusha
-
-    # Call C handler isr_handler<n>()
     call isr_handler\n
-
     popa
     sti
     iret
@@ -53,57 +50,53 @@ ISR 30
 ISR 31
 
 # -------- INT 0x80 syscall stub --------
+# User-side ABI:
+#   eax = syscall number
+#   ebx = arg1
+#   ecx = arg2
+#   edx = arg3
+#
+# C handler: uint32_t syscall_handler(uint32_t num, uint32_t a1,
+#                                     uint32_t a2, uint32_t a3);
+# Return value in eax.
 
 .global isr80_syscall
 .extern syscall_handler
 
 isr80_syscall:
-    cli
-
-    # Save user segment registers
+    # Save segment registers and switch to kernel data segment
     push %ds
     push %es
-    push %fs
-    push %gs
-
-    # Switch to kernel data segment (0x10)
-    mov $0x10, %ax
+    mov $0x10, %ax          # kernel data selector
     mov %ax, %ds
     mov %ax, %es
-    mov %ax, %fs
-    mov %ax, %gs
 
-    # Preserve callee-saved registers for user code
-    # (cdecl: ebx, esi, edi, ebp must be preserved by caller)
+    # Save callee-saved GPRs we must preserve for user mode
     push %ebp
-    push %ebx
-    push %esi
     push %edi
-
-    # Build arguments for syscall_handler(num, a1, a2, a3)
-    # num = eax, a1 = ebx, a2 = ecx, a3 = edx
-    push %edx
-    push %ecx
+    push %esi
     push %ebx
-    push %eax
+
+    # Build C-call stack: (a3, a2, a1, num)
+    push %edx               # a3
+    push %ecx               # a2
+    push %ebx               # a1
+    push %eax               # num
     call syscall_handler
-    add $16, %esp        # pop a3, a2, a1, num
+    add $16, %esp           # pop args
 
-    # eax now holds return value for user
+    # eax now holds return value
 
-    # Restore user callee-saved registers
-    pop %edi
-    pop %esi
+    # Restore callee-saved regs
     pop %ebx
+    pop %esi
+    pop %edi
     pop %ebp
 
-    # Restore user segments
-    pop %gs
-    pop %fs
+    # Restore original segment registers
     pop %es
     pop %ds
 
-    sti
     iret
 
 # -------- idt_load helper --------

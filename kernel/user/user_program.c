@@ -1,47 +1,50 @@
 #include <stdint.h>
 #include "user/syscall.h"
 
-static void u_itoa(uint32_t v, char *out)
-{
-    char tmp[16];
-    int i = 0;
-
-    if (v == 0) {
-        out[0] = '0';
-        out[1] = 0;
-        return;
-    }
-
-    while (v && i < 15) {
-        tmp[i++] = '0' + (v % 10);
-        v /= 10;
-    }
-
-    int j = 0;
-    while (i > 0) {
-        out[j++] = tmp[--i];
-    }
-    out[j] = 0;
-}
-
 void user_program_main(void)
 {
-    sys_puts("\n[USER] Hello from Ring 3 via syscall!!!\n");
+    sys_puts("[USER] Hello...\n");
 
-    uint32_t ticks = sys_get_ticks();
-    char buf[32];
-    u_itoa(ticks, buf);
-
-    sys_puts("[USER] Kernel says ticks = ");
-    sys_puts(buf);
-    sys_puts("\n");
-
-    /* For now, just spin in user mode.
-       Later we'll add SYS_EXIT or scheduling to return to shell. */
-    while (1) {
-        __asm__ volatile("hlt");
+    for (;;) {
+        sys_puts(".");
+        for (volatile int i = 0; i < 5000000; i++) { }
     }
+    // sys_puts("[USER] Hello from Ring 3 via syscall!!!\n");
+    // uint32_t last = 0;
+
+    // for (;;) {
+    // uint32_t t = sys_get_ticks();
+    // if (t - last >= 100) {
+    //     last = t;
+    //     sys_puts("[USER] one more second in Ring 3...\n");
+    // }
 }
+    // for (;;) {
+    //     uint32_t t = sys_get_ticks();
+
+    //     // DEBUG:
+    //     if (t % 50 == 0) {  // print sometimes
+    //         char buf[64];
+    //         // tiny integer to string
+    //         int i = 0;
+    //         uint32_t x = t;
+    //         char tmp[16];
+    //         if (x == 0) { sys_puts("[USER] t=0\n"); }
+    //         else {
+    //             while (x > 0 && i < 10) {
+    //                 tmp[i++] = '0' + (x % 10);
+    //                 x /= 10;
+    //             }
+    //             for (int j = i-1; j >= 0; j--) {
+    //                 char c[2] = {tmp[j], 0};
+    //                 sys_puts(c);
+    //             }
+    //             sys_puts("\n");
+    //         }
+    //     }
+    // }
+// }
+
 
 
 

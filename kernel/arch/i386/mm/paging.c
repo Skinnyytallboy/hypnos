@@ -66,7 +66,21 @@ void paging_init(void)
         page_directory[t] = 0;
     console_write("Identity map complete.\n");
     // Make the first 64MB user-accessible (sets PAGE_USER on PTEs)
-    paging_set_user_for_range(0x00000000, 64 * 1024 * 1024);
+    // paging_set_user_for_range(0x00000000, 64 * 1024 * 1024);
+
+        // Instead: ONLY map user stack + user program
+    extern uint8_t user_stack;
+    extern uint8_t user_stack_top;
+
+    uint32_t ustack = (uint32_t)&user_stack;
+    uint32_t ustack_top = (uint32_t)&user_stack_top;
+
+    paging_set_user_for_range(ustack, ustack_top);
+
+    // Optional: user program in .text
+    extern void user_program_main();
+    uint32_t uprog = (uint32_t)user_program_main;
+    paging_set_user_for_range(uprog & ~0xFFF, (uprog + 4096) & ~0xFFF);
 }
 
 void paging_enable(void)

@@ -178,12 +178,12 @@ void kernel_main(void)
         console_write("\n");
     }
 
-    syscall_init();
-    ok("Syscalls (INT 0x80) initialized.");
-    sleep_ticks(sleep_timer);
-
     timer_install();
     ok("Timer initialized (100 Hz).");
+    sleep_ticks(sleep_timer);
+
+    syscall_init();
+    ok("Syscalls (INT 0x80) initialized.");
     sleep_ticks(sleep_timer);
 
     keyboard_install();

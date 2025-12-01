@@ -1,33 +1,30 @@
-// kernel/user/syscall.h
 #pragma once
 #include <stdint.h>
 
-/* Must match kernel/syscall.h */
 enum {
     SYS_PUTS      = 1,
     SYS_GET_TICKS = 2,
 };
 
-/* Write a C string via kernel console */
-static inline void sys_puts(const char *s)
-{
-    __asm__ volatile(
-        "int $0x80"
-        :
-        : "a"(SYS_PUTS), "b"(s)
-        : "memory"
-    );
-}
-
-/* Get current tick count from kernel timer */
-static inline uint32_t sys_get_ticks(void)
+static inline uint32_t sys_call3(uint32_t num,
+                                 uint32_t a1,
+                                 uint32_t a2,
+                                 uint32_t a3)
 {
     uint32_t ret;
-    __asm__ volatile(
-        "int $0x80"
-        : "=a"(ret)                 /* eax on return */
-        : "a"(SYS_GET_TICKS)        /* eax = syscall number */
-        : "ebx", "ecx", "edx", "memory"
-    );
+    __asm__ volatile("int $0x80"
+                     : "=a"(ret)
+                     : "a"(num), "b"(a1), "c"(a2), "d"(a3)
+                     : "memory");
     return ret;
+}
+
+static inline void sys_puts(const char *s)
+{
+    (void)sys_call3(SYS_PUTS, (uint32_t)s, 0, 0);
+}
+
+static inline uint32_t sys_get_ticks(void)
+{
+    return sys_call3(SYS_GET_TICKS, 0, 0, 0);
 }
